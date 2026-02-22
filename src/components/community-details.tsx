@@ -128,7 +128,7 @@ export function CommunityDetails({ slugOrId }: CommunityDetailsProps) {
               <div className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 <span className="text-sm md:text-base">
-                  {community.members_quantity.toLocaleString()} membros
+                  {(community.members_quantity || 0).toLocaleString()} membros
                 </span>
               </div>
               {community.location && (
@@ -470,7 +470,7 @@ export function CommunityDetails({ slugOrId }: CommunityDetailsProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Membros</span>
                   <span className="font-semibold">
-                    {community.members_quantity.toLocaleString()}
+                    {(community.members_quantity || 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between">

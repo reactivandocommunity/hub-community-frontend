@@ -17,7 +17,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Hub Community',
+  title: 'Hub JoinCommunity',
   description: 'A casa open source da sua comunidade',
   keywords: 'tecnologia, comunidades, eventos, programação, desenvolvimento',
   icons: {

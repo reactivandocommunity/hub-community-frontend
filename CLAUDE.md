@@ -98,7 +98,17 @@ Place shared animation wrappers in `src/components/animations/`:
 - Navigation links in the header/footer
 - Any interaction that would delay user action
 
+### Testing
+- **Framework**: Vitest + React Testing Library + jsdom
+- **Config**: `vitest.config.ts` at project root
+- **Test location**: Colocated `__tests__/` directories next to source files
+- **Commands**:
+  - `pnpm test` — run all tests once
+  - `pnpm test:watch` — run in watch mode
+  - `pnpm test:coverage` — run with V8 coverage report
+- **CI**: GitHub Actions workflow (`.github/workflows/ci.yml`) runs tests + build on every PR to `main`
+- **What to test**: Utility functions, hooks, and pure logic. Component tests use `@testing-library/react`.
+
 ### Build Notes
 - Build is configured to ignore TypeScript and ESLint errors (`next.config.mjs`)
-- No test suite currently exists
 - Husky is configured for git hooks

@@ -22,4 +22,4 @@ jobs:
 
       - name: Run remote command
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd projects/hub-community-frontend && make update"
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "cd ~/projects/hub-community-frontend && make update"

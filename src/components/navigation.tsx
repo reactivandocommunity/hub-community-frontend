@@ -4,7 +4,8 @@ import { Calendar, LogOut, Menu, User, X } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 
 import { AuthModal } from '@/components/auth-modal';
 import { ModeToggle } from '@/components/mode-toggle';
@@ -28,11 +29,18 @@ const ADMIN_EMAILS = [
   'pedrogoiania95',
 ];
 
-export function Navigation() {
+function NavigationContent() {
+  const searchParams = useSearchParams();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { isAuthenticated, user, signOut } = useAuth();
   const shouldReduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (searchParams.get('login') === 'true') {
+      setIsAuthModalOpen(true);
+    }
+  }, [searchParams]);
 
   const handleSignOut = () => {
     signOut();
@@ -237,5 +245,13 @@ export function Navigation() {
         onClose={() => setIsAuthModalOpen(false)}
       />
     </nav>
+  );
+}
+
+export function Navigation() {
+  return (
+    <Suspense>
+      <NavigationContent />
+    </Suspense>
   );
 }

@@ -10,11 +10,12 @@ import {
 } from 'react';
 
 import { isTokenExpired } from '@/lib/jwt';
-import { FORWARD_PASSWORD, SIGN_IN, SIGN_UP } from '@/lib/queries';
+import { FORWARD_PASSWORD, RESET_PASSWORD, SIGN_IN, SIGN_UP } from '@/lib/queries';
 import type {
   AuthContextType,
   AuthState,
   ForwardPasswordResponse,
+  ResetPasswordResponse,
   SignInInput,
   SignInResponse,
   SignUpInput,
@@ -102,6 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [signUpMutation] = useMutation<SignUpResponse>(SIGN_UP);
   const [forwardPasswordMutation] =
     useMutation<ForwardPasswordResponse>(FORWARD_PASSWORD);
+  const [resetPasswordMutation] =
+    useMutation<ResetPasswordResponse>(RESET_PASSWORD);
 
   // Load auth data from localStorage on mount
   useEffect(() => {
@@ -258,12 +261,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resetPassword = async (code: string, password: string, passwordConfirmation: string) => {
+    try {
+      await resetPasswordMutation({ variables: { code, password, passwordConfirmation } });
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  };
+
   const value: AuthContextType = {
     ...state,
     signIn,
     signUp,
     signOut,
     forwardPassword,
+    resetPassword,
     validateToken,
     showLogoutAlert,
     hideLogoutAlert,

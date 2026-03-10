@@ -199,6 +199,10 @@ export interface ForwardPasswordResponse {
   forwardPassword: boolean;
 }
 
+export interface ResetPasswordResponse {
+  resetPassword: boolean;
+}
+
 export interface AuthState {
   user: User | null;
   token: string | null;
@@ -212,6 +216,7 @@ export interface AuthContextType extends AuthState {
   signUp: (input: SignUpInput) => Promise<void>;
   signOut: () => void;
   forwardPassword: (email: string) => Promise<void>;
+  resetPassword: (code: string, password: string, passwordConfirmation: string) => Promise<void>;
   validateToken: () => boolean;
   showLogoutAlert: () => void;
   hideLogoutAlert: () => void;

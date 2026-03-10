@@ -271,6 +271,12 @@ export const FORWARD_PASSWORD = gql`
   }
 `;
 
+export const RESET_PASSWORD = gql`
+  mutation ResetPassword($code: String!, $password: String!, $passwordConfirmation: String!) {
+    resetPassword(code: $code, password: $password, passwordConfirmation: $passwordConfirmation)
+  }
+`;
+
 export const GET_TALK_BY_ID = gql`
   query GetTalkById($talkId: String!) {
     talk(id: $talkId) {

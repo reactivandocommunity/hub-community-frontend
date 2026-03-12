@@ -109,7 +109,7 @@ export default function CSVBadgePrinterPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      link: 'https://joincommunity.com.br',
+      link: 'https://hubcommunity.io',
       eventName: 'Reactivando',
       nameColumn: '',
     },
@@ -440,400 +440,405 @@ export default function CSVBadgePrinterPage() {
   return (
     <main className="container mx-auto py-10 px-4 min-h-screen">
       <FadeIn direction="up" duration={0.3}>
-      <div className="max-w-5xl mx-auto space-y-8">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-          <div className="space-y-2">
-            <h1 className="text-3xl font-bold tracking-tight">
-              Impressão em Massa (CSV/XLSX)
-            </h1>
-            <p className="text-muted-foreground">
-              Faça upload de um arquivo CSV ou Excel e mapeie a coluna de nomes
-              para imprimir crachás individuais.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Dialog
-              open={isManualModalOpen}
-              onOpenChange={setIsManualModalOpen}
-            >
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Impressão Manual
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Impressão Manual de Crachá</DialogTitle>
-                  <DialogDescription>
-                    Digite o nome do participante para gerar o crachá
-                    individualmente.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                  <div className="space-y-2">
-                    <Label>Nome do Participante</Label>
-                    <Input
-                      placeholder="Nome Completo"
-                      value={manualName}
-                      onChange={e => setManualName(e.target.value)}
-                    />
-                  </div>
-                  {/* Hidden QR Code for manual print */}
-                  <div id={`qr-canvas-${manualName}`} className="hidden">
-                    <QRCodeCanvas value={staticLink} size={128} />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setManualName('');
-                      setIsManualModalOpen(false);
-                    }}
-                  >
-                    Cancelar
+        <div className="max-w-5xl mx-auto space-y-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl font-bold tracking-tight">
+                Impressão em Massa (CSV/XLSX)
+              </h1>
+              <p className="text-muted-foreground">
+                Faça upload de um arquivo CSV ou Excel e mapeie a coluna de
+                nomes para imprimir crachás individuais.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Dialog
+                open={isManualModalOpen}
+                onOpenChange={setIsManualModalOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Impressão Manual
                   </Button>
-                  <Button disabled={!manualName} onClick={handleManualPrint}>
-                    <Printer className="w-4 h-4 mr-2" />
-                    Imprimir
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload Arquivo
-            </Button>
-          </div>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={onFileUpload}
-            accept=".csv,.xlsx,.xls"
-            className="hidden"
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle>Configurações</CardTitle>
-              <CardDescription>
-                Configure o link do QR Code e o nome do evento.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <div className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="eventName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Nome do Evento/Comunidade</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Ex: Reactivando" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="link"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Link do QR Code (Estático)</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input
-                              placeholder="https://exemplo.com"
-                              className="pl-9"
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="nameColumn"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Coluna de Nome</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione a coluna" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {headers.map(header => (
-                              <SelectItem key={header} value={header}>
-                                {header}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormDescription>
-                          Qual coluna do arquivo contém os nomes?
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {fileName && (
-                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm">
-                      <FileText className="w-4 h-4" />
-                      <span className="truncate">{fileName}</span>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Impressão Manual de Crachá</DialogTitle>
+                    <DialogDescription>
+                      Digite o nome do participante para gerar o crachá
+                      individualmente.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="py-4 space-y-4">
+                    <div className="space-y-2">
+                      <Label>Nome do Participante</Label>
+                      <Input
+                        placeholder="Nome Completo"
+                        value={manualName}
+                        onChange={e => setManualName(e.target.value)}
+                      />
                     </div>
-                  )}
-                </div>
-              </Form>
-            </CardContent>
-          </Card>
-
-          {history.length > 0 && (
-            <Card className="lg:col-span-1 border-primary/20 bg-primary/5">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <HistoryIcon className="w-4 h-4 text-primary" />
-                    <CardTitle className="text-sm">Histórico Recente</CardTitle>
+                    {/* Hidden QR Code for manual print */}
+                    <div id={`qr-canvas-${manualName}`} className="hidden">
+                      <QRCodeCanvas value={staticLink} size={128} />
+                    </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => saveHistory([])}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setManualName('');
+                        setIsManualModalOpen(false);
+                      }}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button disabled={!manualName} onClick={handleManualPrint}>
+                      <Printer className="w-4 h-4 mr-2" />
+                      Imprimir
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Arquivo
+              </Button>
+            </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={onFileUpload}
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Card className="lg:col-span-1">
+              <CardHeader>
+                <CardTitle>Configurações</CardTitle>
                 <CardDescription>
-                  Arquivos carregados recentemente.
+                  Configure o link do QR Code e o nome do evento.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                <div className="space-y-2">
-                  {history.map(item => (
-                    <div
-                      key={item.id}
-                      className={`group flex items-center justify-between p-2 rounded-md border text-sm transition-all cursor-pointer hover:border-primary/50 hover:shadow-sm ${fileName === item.fileName ? 'bg-background border-primary shadow-md' : 'bg-background border-border'}`}
-                      onClick={() => loadFromHistory(item)}
-                    >
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <FileText
-                          className={`w-4 h-4 flex-shrink-0 ${fileName === item.fileName ? 'text-primary' : 'text-muted-foreground'}`}
-                        />
-                        <span
-                          className={`truncate font-medium ${fileName === item.fileName ? 'text-primary' : 'text-foreground'}`}
-                        >
-                          {item.fileName}
-                        </span>
+              <CardContent>
+                <Form {...form}>
+                  <div className="space-y-6">
+                    <FormField
+                      control={form.control}
+                      name="eventName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Nome do Evento/Comunidade</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Ex: Reactivando" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="link"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Link do QR Code (Estático)</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <LinkIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="https://exemplo.com"
+                                className="pl-9"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="nameColumn"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Coluna de Nome</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione a coluna" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {headers.map(header => (
+                                <SelectItem key={header} value={header}>
+                                  {header}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Qual coluna do arquivo contém os nomes?
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {fileName && (
+                      <div className="flex items-center gap-2 p-2 bg-muted rounded-md text-sm">
+                        <FileText className="w-4 h-4" />
+                        <span className="truncate">{fileName}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Link href={`/badge-printer/history/${item.id}`}>
+                    )}
+                  </div>
+                </Form>
+              </CardContent>
+            </Card>
+
+            {history.length > 0 && (
+              <Card className="lg:col-span-1 border-primary/20 bg-primary/5">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <HistoryIcon className="w-4 h-4 text-primary" />
+                      <CardTitle className="text-sm">
+                        Histórico Recente
+                      </CardTitle>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => saveHistory([])}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Arquivos carregados recentemente.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="space-y-2">
+                    {history.map(item => (
+                      <div
+                        key={item.id}
+                        className={`group flex items-center justify-between p-2 rounded-md border text-sm transition-all cursor-pointer hover:border-primary/50 hover:shadow-sm ${fileName === item.fileName ? 'bg-background border-primary shadow-md' : 'bg-background border-border'}`}
+                        onClick={() => loadFromHistory(item)}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <FileText
+                            className={`w-4 h-4 flex-shrink-0 ${fileName === item.fileName ? 'text-primary' : 'text-muted-foreground'}`}
+                          />
+                          <span
+                            className={`truncate font-medium ${fileName === item.fileName ? 'text-primary' : 'text-foreground'}`}
+                          >
+                            {item.fileName}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Link href={`/badge-printer/history/${item.id}`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-primary"
+                              onClick={e => e.stopPropagation()}
+                            >
+                              <BarChart3 className="w-4 h-4" />
+                            </Button>
+                          </Link>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-primary"
-                            onClick={e => e.stopPropagation()}
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
+                            onClick={e => {
+                              e.stopPropagation();
+                              deleteHistoryItem(item.id);
+                            }}
                           >
-                            <BarChart3 className="w-4 h-4" />
+                            <Trash2 className="w-3 h-3" />
                           </Button>
-                        </Link>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive/10 hover:text-destructive"
-                          onClick={e => {
-                            e.stopPropagation();
-                            deleteHistoryItem(item.id);
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Lista de Participantes</CardTitle>
+                <CardDescription>
+                  Visualize e imprima os crachás individualmente.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-muted/50 p-3 rounded-lg border border-border/50 text-center">
+                    <div className="text-2xl font-bold">{totalCount}</div>
+                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                      Total
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Lista de Participantes</CardTitle>
-              <CardDescription>
-                Visualize e imprima os crachás individualmente.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-muted/50 p-3 rounded-lg border border-border/50 text-center">
-                  <div className="text-2xl font-bold">{totalCount}</div>
-                  <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
-                    Total
                   </div>
-                </div>
-                <div className="bg-green-500/10 p-3 rounded-lg border border-green-500/20 text-center">
-                  <div className="text-2xl font-bold text-green-700">
-                    {printedCount}
-                  </div>
-                  <div className="text-[10px] uppercase font-bold text-green-600 tracking-wider">
-                    Impressos
-                  </div>
-                </div>
-                <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 text-center">
-                  <div className="text-2xl font-bold text-blue-700">
-                    {manualCount}
-                  </div>
-                  <div className="text-[10px] uppercase font-bold text-blue-600 tracking-wider">
-                    Manuais
-                  </div>
-                </div>
-              </div>
-
-              {csvData.length > 0 ? (
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1 flex gap-2">
-                      <Input
-                        placeholder="Pesquisar por nome..."
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                        className="flex-1"
-                      />
-                      {searchTerm && (
-                        <Button
-                          variant="ghost"
-                          onClick={() => setSearchTerm('')}
-                          className="text-muted-foreground"
-                        >
-                          Resetar
-                        </Button>
-                      )}
+                  <div className="bg-green-500/10 p-3 rounded-lg border border-green-500/20 text-center">
+                    <div className="text-2xl font-bold text-green-700">
+                      {printedCount}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={exportList}
-                      className="whitespace-nowrap"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Baixar Lista Atualizada
-                    </Button>
+                    <div className="text-[10px] uppercase font-bold text-green-600 tracking-wider">
+                      Impressos
+                    </div>
                   </div>
+                  <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20 text-center">
+                    <div className="text-2xl font-bold text-blue-700">
+                      {manualCount}
+                    </div>
+                    <div className="text-[10px] uppercase font-bold text-blue-600 tracking-wider">
+                      Manuais
+                    </div>
+                  </div>
+                </div>
 
-                  <div className="rounded-md border overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Nome</TableHead>
-                          <TableHead className="w-[100px] text-right">
-                            Ações
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredData.map((row, index) => {
-                          const name = selectedNameColumn
-                            ? String(row[selectedNameColumn] || '')
-                            : '';
-                          const isPrinted = !!row.__printed;
+                {csvData.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex-1 flex gap-2">
+                        <Input
+                          placeholder="Pesquisar por nome..."
+                          value={searchTerm}
+                          onChange={e => setSearchTerm(e.target.value)}
+                          className="flex-1"
+                        />
+                        {searchTerm && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => setSearchTerm('')}
+                            className="text-muted-foreground"
+                          >
+                            Resetar
+                          </Button>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportList}
+                        className="whitespace-nowrap"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Baixar Lista Atualizada
+                      </Button>
+                    </div>
 
-                          return (
-                            <TableRow
-                              key={index}
-                              className={
-                                isPrinted
-                                  ? 'bg-muted/50 text-muted-foreground transition-colors'
-                                  : ''
-                              }
-                            >
-                              <TableCell className="font-medium">
-                                <div className="flex items-center gap-2">
-                                  {isPrinted && (
-                                    <Check className="w-3 h-3 text-green-600" />
-                                  )}
-                                  {name || (
-                                    <span className="text-muted-foreground italic">
-                                      Vazio
-                                    </span>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <div className="flex justify-end items-center gap-2">
-                                  <div
-                                    id={`qr-canvas-${name}`}
-                                    className="hidden"
-                                  >
-                                    <QRCodeCanvas
-                                      value={staticLink}
-                                      size={128}
-                                    />
+                    <div className="rounded-md border overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead className="w-[100px] text-right">
+                              Ações
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredData.map((row, index) => {
+                            const name = selectedNameColumn
+                              ? String(row[selectedNameColumn] || '')
+                              : '';
+                            const isPrinted = !!row.__printed;
+
+                            return (
+                              <TableRow
+                                key={index}
+                                className={
+                                  isPrinted
+                                    ? 'bg-muted/50 text-muted-foreground transition-colors'
+                                    : ''
+                                }
+                              >
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {isPrinted && (
+                                      <Check className="w-3 h-3 text-green-600" />
+                                    )}
+                                    {name || (
+                                      <span className="text-muted-foreground italic">
+                                        Vazio
+                                      </span>
+                                    )}
                                   </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    disabled={!name || !selectedNameColumn}
-                                    onClick={() =>
-                                      handlePrint(
-                                        name,
-                                        staticLink,
-                                        currentEventName,
-                                        csvData.indexOf(row) // Use index from original data for correct tracking
-                                      )
-                                    }
-                                  >
-                                    <Printer
-                                      className={`${isPrinted ? 'text-green-600' : ''} w-4 h-4`}
-                                    />
-                                  </Button>
-                                </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end items-center gap-2">
+                                    <div
+                                      id={`qr-canvas-${name}`}
+                                      className="hidden"
+                                    >
+                                      <QRCodeCanvas
+                                        value={staticLink}
+                                        size={128}
+                                      />
+                                    </div>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      disabled={!name || !selectedNameColumn}
+                                      onClick={() =>
+                                        handlePrint(
+                                          name,
+                                          staticLink,
+                                          currentEventName,
+                                          csvData.indexOf(row) // Use index from original data for correct tracking
+                                        )
+                                      }
+                                    >
+                                      <Printer
+                                        className={`${isPrinted ? 'text-green-600' : ''} w-4 h-4`}
+                                      />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                          {filteredData.length === 0 && (
+                            <TableRow>
+                              <TableCell
+                                colSpan={2}
+                                className="h-24 text-center"
+                              >
+                                Nenhum participante encontrado.
                               </TableCell>
                             </TableRow>
-                          );
-                        })}
-                        {filteredData.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={2} className="h-24 text-center">
-                              Nenhum participante encontrado.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
-                  <Upload className="w-8 h-8 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    Faça upload de um arquivo CSV ou Excel para começar.
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 text-center border-2 border-dashed rounded-lg">
+                    <Upload className="w-8 h-8 text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
+                      Faça upload de um arquivo CSV ou Excel para começar.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
       </FadeIn>
     </main>
   );

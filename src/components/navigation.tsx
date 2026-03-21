@@ -112,12 +112,20 @@ function NavigationContent() {
                     </Link>
                   </DropdownMenuItem>
                   {user?.email && ADMIN_EMAILS.includes(user.email) && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/admin/events" className="cursor-pointer">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        <span>Gerenciar Eventos</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/events" className="cursor-pointer">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          <span>Gerenciar Eventos</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin/voting-sessions" className="cursor-pointer">
+                          <Calendar className="mr-2 h-4 w-4" />
+                          <span>Gerenciar Sessões</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -201,6 +209,30 @@ function NavigationContent() {
                       {user?.name || user?.username || 'Perfil'}
                     </Button>
                   </Link>
+                  {user?.email && ADMIN_EMAILS.includes(user.email) && (
+                    <>
+                      <Link href="/admin/events" onClick={() => setIsMenuOpen(false)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-transparent border-t-0 rounded-none rounded-t-md"
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Gerenciar Eventos
+                        </Button>
+                      </Link>
+                      <Link href="/admin/voting-sessions" onClick={() => setIsMenuOpen(false)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full bg-transparent border-t-0 rounded-none rounded-b-md"
+                        >
+                          <Calendar className="h-4 w-4 mr-2" />
+                          Gerenciar Sessões
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"

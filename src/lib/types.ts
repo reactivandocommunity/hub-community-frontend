@@ -413,3 +413,50 @@ export interface UpdateTalkResponse {
     speakers: Speaker[];
   };
 }
+
+export interface VotingOption {
+  id: number;
+  documentId: string;
+  name: string;
+  description?: string;
+  pitch_order: number;
+  voting_session?: VotingSession; // reference
+}
+
+export interface VotingSession {
+  id: number;
+  documentId: string;
+  title: string;
+  description?: string;
+  event_id?: string;
+  status: 'open' | 'closed' | 'archived';
+  max_votes_per_user: number;
+  voting_options?: VotingOption[];
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+}
+
+export interface VotingSessionInput {
+  title: string;
+  description?: string;
+  event_id?: string;
+  status: 'open' | 'closed' | 'archived';
+  max_votes_per_user: number;
+}
+
+export interface VotingSessionsResponse {
+  data: VotingSession[];
+  meta: {
+    pagination: {
+      page: number;
+      pageSize: number;
+      pageCount: number;
+      total: number;
+    }
+  };
+}
+
+export interface VotingSessionResponse {
+  data: VotingSession;
+}

@@ -425,11 +425,28 @@ export default function CSVBadgePrinterPage() {
   const staticLink = form.watch('link');
   const currentEventName = form.watch('eventName');
 
+  const getFullName = (row: CSVRow, nameCol: string) => {
+    if (!nameCol) return '';
+    const firstName = String(row[nameCol] || '').trim();
+    if (!firstName) return '';
+    
+    let surname = '';
+    const keys = Object.keys(row);
+    const surnameKey = keys.find(k => {
+      const lower = k.toLowerCase().trim();
+      return lower === 'sobrenome' || lower.includes('sobrenome') || lower === 'last name' || lower === 'surname';
+    });
+    
+    if (surnameKey && surnameKey !== nameCol) {
+      surname = String(row[surnameKey] || '').trim();
+    }
+    
+    return surname ? `${firstName} ${surname}` : firstName;
+  };
+
   const filteredData = csvData.filter(row => {
     if (!searchTerm) return true;
-    const name = selectedNameColumn
-      ? String(row[selectedNameColumn] || '')
-      : '';
+    const name = getFullName(row, selectedNameColumn);
     return name.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
@@ -754,9 +771,7 @@ export default function CSVBadgePrinterPage() {
                         </TableHeader>
                         <TableBody>
                           {filteredData.map((row, index) => {
-                            const name = selectedNameColumn
-                              ? String(row[selectedNameColumn] || '')
-                              : '';
+                            const name = getFullName(row, selectedNameColumn);
                             const isPrinted = !!row.__printed;
 
                             return (

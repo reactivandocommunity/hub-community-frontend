@@ -10,6 +10,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
+import {
   Table,
   TableBody,
   TableCell,
@@ -21,7 +30,7 @@ import { GET_EVENT_BY_SLUG_OR_ID } from '@/lib/queries';
 import { useQuery } from '@apollo/client';
 import { ArrowLeft, Loader2, Download } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 
 interface Participant {
@@ -33,6 +42,9 @@ interface Participant {
   phone_number: string;
   createdAt: string;
 }
+
+const ITEMS_PER_PAGE = 25;
+const STRAPI_PAGE_SIZE = 100;
 
 export default function CertificadosAdminPage() {
   const router = useRouter();
@@ -50,6 +62,7 @@ export default function CertificadosAdminPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     if (!eventData?.eventBySlugOrId?.documentId) {
@@ -57,16 +70,32 @@ export default function CertificadosAdminPage() {
       return;
     }
 
-    const fetchParticipants = async () => {
+    const fetchAllParticipants = async () => {
       try {
         const eventDocId = eventData.eventBySlugOrId.documentId;
-        const res = await fetch(
-          `https://manager.hubcommunity.io/api/participants?populate=*&filters[event][documentId][$eq]=${eventDocId}&sort=createdAt:desc`
-        );
-        if (!res.ok) throw new Error('Falha ao buscar os participantes');
+        let allData: Participant[] = [];
+        let page = 1;
+        let hasMore = true;
 
-        const json = await res.json();
-        setParticipants(json.data || []);
+        while (hasMore) {
+          const res = await fetch(
+            `https://manager.hubcommunity.io/api/participants?populate=*&filters[event][documentId][$eq]=${eventDocId}&sort=createdAt:desc&pagination[page]=${page}&pagination[pageSize]=${STRAPI_PAGE_SIZE}`
+          );
+          if (!res.ok) throw new Error('Falha ao buscar os participantes');
+
+          const json = await res.json();
+          const data = json.data || [];
+          allData = [...allData, ...data];
+
+          const pagination = json.meta?.pagination;
+          if (pagination && page < pagination.pageCount) {
+            page++;
+          } else {
+            hasMore = false;
+          }
+        }
+
+        setParticipants(allData);
       } catch (err) {
         setError(
           err instanceof Error
@@ -78,38 +107,84 @@ export default function CertificadosAdminPage() {
       }
     };
 
-    fetchParticipants();
+    fetchAllParticipants();
   }, [eventData, eventLoading]);
+
+  const totalPages = Math.ceil(participants.length / ITEMS_PER_PAGE);
+
+  const paginatedParticipants = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return participants.slice(start, start + ITEMS_PER_PAGE);
+  }, [participants, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const getVisiblePages = (): (number | 'ellipsis')[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    const pages: (number | 'ellipsis')[] = [1];
+
+    if (currentPage > 3) {
+      pages.push('ellipsis');
+    }
+
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPages - 2) {
+      pages.push('ellipsis');
+    }
+
+    pages.push(totalPages);
+    return pages;
+  };
+
+  const formatParticipant = (p: Participant) => {
+    const date = p.createdAt
+      ? new Date(p.createdAt).toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : '--/--/----';
+
+    let formattedCpf = p.identifier || '-';
+    if (formattedCpf.length === 11) {
+      formattedCpf = formattedCpf.replace(
+        /(\d{3})(\d{3})(\d{3})(\d{2})/,
+        '$1.$2.$3-$4'
+      );
+    }
+
+    let formattedPhone = p.phone_number || '-';
+    if (formattedPhone.length >= 10 && formattedPhone.length <= 11) {
+      formattedPhone = formattedPhone.replace(
+        /(\d{2})(\d{4,5})(\d{4})/,
+        '($1) $2-$3'
+      );
+    }
+
+    return { date, formattedCpf, formattedPhone };
+  };
 
   const handleDownloadCSV = () => {
     if (participants.length === 0) return;
 
     const wsData = participants.map(p => {
-      const date = p.createdAt
-        ? new Date(p.createdAt).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          })
-        : '--/--/----';
-
-      let formattedCpf = p.identifier || '-';
-      if (formattedCpf.length === 11) {
-        formattedCpf = formattedCpf.replace(
-          /(\d{3})(\d{3})(\d{3})(\d{2})/,
-          '$1.$2.$3-$4'
-        );
-      }
-
-      let formattedPhone = p.phone_number || '-';
-      if (formattedPhone.length >= 10 && formattedPhone.length <= 11) {
-        formattedPhone = formattedPhone.replace(
-          /(\d{2})(\d{4,5})(\d{4})/,
-          '($1) $2-$3'
-        );
-      }
+      const { date, formattedCpf, formattedPhone } = formatParticipant(p);
 
       return {
         'Nome': p.name || '-',
@@ -123,7 +198,7 @@ export default function CertificadosAdminPage() {
     const ws = XLSX.utils.json_to_sheet(wsData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Certificados');
-    XLSX.writeFile(wb, `certificados-${eventData?.eventBySlugOrId?.slug || 'evento'}.csv`, { bookType: 'csv' });
+    XLSX.writeFile(wb, `certificados-${eventData?.eventBySlugOrId?.slug || 'evento'}.xlsx`, { bookType: 'xlsx' });
   };
 
   if (eventLoading || (loading && !error)) {
@@ -164,7 +239,7 @@ export default function CertificadosAdminPage() {
               {participants.length > 0 && (
                 <Button onClick={handleDownloadCSV} variant="outline">
                   <Download className="w-4 h-4 mr-2" />
-                  Exportar CSV
+                  Exportar XLSX
                 </Button>
               )}
             </div>
@@ -179,69 +254,99 @@ export default function CertificadosAdminPage() {
                 Nenhuma solicitação encontrada.
               </p>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nome</TableHead>
-                      <TableHead>CPF</TableHead>
-                      <TableHead>E-mail</TableHead>
-                      <TableHead>WhatsApp</TableHead>
-                      <TableHead>Data da Solicitação</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {participants.map(p => {
-                      const date = p.createdAt
-                        ? new Date(p.createdAt).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
-                        : '--/--/----';
+              <>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome</TableHead>
+                        <TableHead>CPF</TableHead>
+                        <TableHead>E-mail</TableHead>
+                        <TableHead>WhatsApp</TableHead>
+                        <TableHead>Data da Solicitação</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedParticipants.map(p => {
+                        const { date, formattedCpf, formattedPhone } = formatParticipant(p);
 
-                      let formattedCpf = p.identifier || '-';
-                      if (formattedCpf.length === 11) {
-                        formattedCpf = formattedCpf.replace(
-                          /(\d{3})(\d{3})(\d{3})(\d{2})/,
-                          '$1.$2.$3-$4'
+                        return (
+                          <TableRow key={p.documentId || p.id}>
+                            <TableCell className="font-medium whitespace-nowrap">
+                              {p.name || '-'}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {formattedCpf}
+                            </TableCell>
+                            <TableCell>{p.email || '-'}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {formattedPhone}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {date}
+                            </TableCell>
+                          </TableRow>
                         );
-                      }
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
 
-                      let formattedPhone = p.phone_number || '-';
-                      if (
-                        formattedPhone.length >= 10 &&
-                        formattedPhone.length <= 11
-                      ) {
-                        formattedPhone = formattedPhone.replace(
-                          /(\d{2})(\d{4,5})(\d{4})/,
-                          '($1) $2-$3'
-                        );
-                      }
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                    <p className="text-sm text-muted-foreground">
+                      Exibindo {((currentPage - 1) * ITEMS_PER_PAGE) + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, participants.length)} de {participants.length} participantes
+                    </p>
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(currentPage - 1);
+                            }}
+                            className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          />
+                        </PaginationItem>
 
-                      return (
-                        <TableRow key={p.documentId || p.id}>
-                          <TableCell className="font-medium whitespace-nowrap">
-                            {p.name || '-'}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            {formattedCpf}
-                          </TableCell>
-                          <TableCell>{p.email || '-'}</TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            {formattedPhone}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            {date}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+                        {getVisiblePages().map((page, index) =>
+                          page === 'ellipsis' ? (
+                            <PaginationItem key={`ellipsis-${index}`}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          ) : (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                href="#"
+                                isActive={page === currentPage}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handlePageChange(page);
+                                }}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )
+                        )}
+
+                        <PaginationItem>
+                          <PaginationNext
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handlePageChange(currentPage + 1);
+                            }}
+                            className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

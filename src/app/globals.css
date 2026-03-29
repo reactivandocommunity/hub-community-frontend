@@ -70,8 +70,13 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground pb-24;
   }
+}
+
+/* Safe area for mobile bottom nav (iPhone notch) */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* Dropdown/menu animations for Radix UI */

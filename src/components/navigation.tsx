@@ -1,10 +1,9 @@
 'use client';
 
-import { Calendar, LogOut, Menu, User, X } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { Calendar, Home, Info, LogIn, LogOut, Menu, Users, CalendarDays, User, X } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 
 import { AuthModal } from '@/components/auth-modal';
@@ -31,10 +30,9 @@ const ADMIN_EMAILS = [
 
 function NavigationContent() {
   const searchParams = useSearchParams();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const { isAuthenticated, user, signOut } = useAuth();
-  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (searchParams.get('login') === 'true') {
@@ -44,239 +42,180 @@ function NavigationContent() {
 
   const handleSignOut = () => {
     signOut();
-    setIsMenuOpen(false);
+  };
+
+  const isActive = (href: string) => {
+    if (href === '/') return pathname === '/';
+    return pathname.startsWith(href);
   };
 
   return (
-    <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm sticky top-0 z-50 border-b border-border">
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/images/logo-horizontal-raw.png"
-              alt="Hub Community"
-              width={200}
-              height={40}
-              priority
-              className="h-8 w-auto"
-            />
-          </Link>
-
-          {/* Desktop Menu */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link
-              href="/"
-              className="text-muted-foreground hover:text-primary transition-colors"
-            >
-              Início
+    <>
+      {/* Desktop Navigation - floating bottom bar */}
+      <nav className="hidden md:block fixed bottom-4 left-4 right-4 z-50">
+        <div className="container mx-auto max-w-6xl bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 shadow-lg shadow-black/5 dark:shadow-black/20 border border-border/50 rounded-2xl px-6">
+          <div className="flex items-center justify-between h-14">
+            {/* Logo */}
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/images/logo-horizontal-raw.png"
+                alt="Hub Community"
+                width={200}
+                height={40}
+                priority
+                className="h-8 w-auto"
+              />
             </Link>
-            <Link
-              href="/communities"
-              className="text-muted-foreground hover:text-primary transition-colors"
-            >
-              Comunidades
-            </Link>
-            <Link
-              href="/events"
-              className="text-muted-foreground hover:text-primary transition-colors"
-            >
-              Eventos
-            </Link>
-            <Link
-              href="/about"
-              className="text-muted-foreground hover:text-primary transition-colors"
-            >
-              Sobre
-            </Link>
-          </div>
 
-          {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-4">
-            <ModeToggle />
-            {isAuthenticated ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <User className="h-4 w-4" />
-                    <span className="hidden sm:inline-block">
-                      {user?.name || user?.username || 'Perfil'}
-                    </span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Perfil</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  {user?.email && ADMIN_EMAILS.includes(user.email) && (
-                    <>
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin/events" className="cursor-pointer">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          <span>Gerenciar Eventos</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/admin/voting-sessions" className="cursor-pointer">
-                          <Calendar className="mr-2 h-4 w-4" />
-                          <span>Gerenciar Sessões</span>
-                        </Link>
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-red-500 focus:text-red-500 cursor-pointer"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Sair</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button size="sm" onClick={() => setIsAuthModalOpen(true)}>
-                Entrar
-              </Button>
-            )}
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
-          </button>
-        </div>
-
-        {/* Mobile Menu */}
-        <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={shouldReduceMotion ? false : { height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="md:hidden overflow-hidden border-t border-border bg-background"
-          >
-          <div className="py-4">
-            <div className="flex flex-col space-y-4">
+            {/* Desktop Menu */}
+            <div className="flex items-center space-x-8">
               <Link
                 href="/"
-                className="text-muted-foreground hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
+                className={`transition-colors ${isActive('/') ? 'text-primary font-medium' : 'text-muted-foreground hover:text-primary'}`}
               >
                 Início
               </Link>
               <Link
                 href="/communities"
-                className="text-muted-foreground hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
+                className={`transition-colors ${isActive('/communities') ? 'text-primary font-medium' : 'text-muted-foreground hover:text-primary'}`}
               >
                 Comunidades
               </Link>
               <Link
                 href="/events"
-                className="text-muted-foreground hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
+                className={`transition-colors ${isActive('/events') ? 'text-primary font-medium' : 'text-muted-foreground hover:text-primary'}`}
               >
                 Eventos
               </Link>
               <Link
                 href="/about"
-                className="text-muted-foreground hover:text-primary transition-colors"
-                onClick={() => setIsMenuOpen(false)}
+                className={`transition-colors ${isActive('/about') ? 'text-primary font-medium' : 'text-muted-foreground hover:text-primary'}`}
               >
                 Sobre
               </Link>
+            </div>
+
+            {/* Desktop Actions */}
+            <div className="flex items-center space-x-4">
+              <ModeToggle />
               {isAuthenticated ? (
-                <div className="flex flex-col space-y-2 pt-4">
-                  <Link href="/profile" onClick={() => setIsMenuOpen(false)}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full bg-transparent"
-                    >
-                      <User className="h-4 w-4 mr-2" />
-                      {user?.name || user?.username || 'Perfil'}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2">
+                      <User className="h-4 w-4" />
+                      <span className="hidden sm:inline-block">
+                        {user?.name || user?.username || 'Perfil'}
+                      </span>
                     </Button>
-                  </Link>
-                  {user?.email && ADMIN_EMAILS.includes(user.email) && (
-                    <>
-                      <Link href="/admin/events" onClick={() => setIsMenuOpen(false)}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent border-t-0 rounded-none rounded-t-md"
-                        >
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Gerenciar Eventos
-                        </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" side="top">
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>Perfil</span>
                       </Link>
-                      <Link href="/admin/voting-sessions" onClick={() => setIsMenuOpen(false)}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full bg-transparent border-t-0 rounded-none rounded-b-md"
-                        >
-                          <Calendar className="h-4 w-4 mr-2" />
-                          Gerenciar Sessões
-                        </Button>
-                      </Link>
-                    </>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full bg-transparent"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sair
-                  </Button>
-                </div>
+                    </DropdownMenuItem>
+                    {user?.email && ADMIN_EMAILS.includes(user.email) && (
+                      <>
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/events" className="cursor-pointer">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            <span>Gerenciar Eventos</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/voting-sessions" className="cursor-pointer">
+                            <Calendar className="mr-2 h-4 w-4" />
+                            <span>Gerenciar Sessões</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      className="text-red-500 focus:text-red-500 cursor-pointer"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Sair</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : (
-                <div className="flex space-x-2 pt-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 bg-transparent"
-                    onClick={() => {
-                      setIsAuthModalOpen(true);
-                      setIsMenuOpen(false);
-                    }}
-                  >
-                    Entrar
-                  </Button>
-                  {/* <Button size="sm" className="flex-1">
-                    Criar Evento
-                  </Button> */}
-                </div>
+                <Button size="sm" onClick={() => setIsAuthModalOpen(true)}>
+                  Entrar
+                </Button>
               )}
-              <div className="pt-4 flex justify-center">
-                <ModeToggle />
-              </div>
             </div>
           </div>
-          </motion.div>
-        )}
-        </AnimatePresence>
-      </div>
+        </div>
+      </nav>
+
+      {/* Mobile Navigation - floating bottom icon bar */}
+      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 border border-border/50 rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/20 safe-area-bottom">
+        <div className="flex items-center justify-around h-14">
+          <Link
+            href="/"
+            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
+              isActive('/') ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+            }`}
+          >
+            <Home className="h-6 w-6" />
+          </Link>
+
+          <Link
+            href="/communities"
+            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
+              isActive('/communities') ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+            }`}
+          >
+            <Users className="h-6 w-6" />
+          </Link>
+
+          <Link
+            href="/events"
+            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
+              isActive('/events') ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+            }`}
+          >
+            <CalendarDays className="h-6 w-6" />
+          </Link>
+
+          <Link
+            href="/about"
+            className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
+              isActive('/about') ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+            }`}
+          >
+            <Info className="h-6 w-6" />
+          </Link>
+
+          {isAuthenticated ? (
+            <Link
+              href="/profile"
+              className={`flex items-center justify-center w-10 h-10 rounded-xl transition-colors ${
+                isActive('/profile') ? 'text-primary bg-primary/10' : 'text-muted-foreground'
+              }`}
+            >
+              <User className="h-6 w-6" />
+            </Link>
+          ) : (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="flex items-center justify-center w-10 h-10 rounded-xl transition-colors text-muted-foreground"
+            >
+              <LogIn className="h-6 w-6" />
+            </button>
+          )}
+        </div>
+      </nav>
 
       {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
-    </nav>
+    </>
   );
 }
 

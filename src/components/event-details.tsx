@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { AddToCalendarButton } from '@/components/add-to-calendar-button';
 import { FadeIn } from '@/components/animations';
 import { EventDetailsSkeleton } from '@/components/event-details-skeleton';
 import { TalkCard } from '@/components/talk-card';
@@ -469,14 +470,32 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
           })()}
         </div>
         {isAlreadySignedUp ? (
-          <Button
-            size="lg"
-            className="rounded-full w-full font-semibold bg-green-600 hover:bg-green-700 text-white"
-            onClick={() => router.push(`/events/${event?.slug || slugOrId}/signup`)}
-          >
-            <CheckCircle2 className="h-4 w-4 mr-2" />
-            Já Inscrito — Ver Detalhes
-          </Button>
+          <div className="grid grid-cols-1 gap-3">
+            <AddToCalendarButton
+              title={event.title}
+              description={event.description}
+              startDate={event.start_date}
+              endDate={event.end_date}
+              location={
+                event.location
+                  ? event.location.full_address || event.location.title || event.location.city
+                  : undefined
+              }
+              isOnline={event.is_online}
+              callLink={callLink || event.call_link}
+              variant="outline"
+              size="lg"
+              className="w-full"
+            />
+            <Button
+              size="lg"
+              className="rounded-full w-full font-semibold bg-green-600 hover:bg-green-700 text-white"
+              onClick={() => router.push(`/events/${event?.slug || slugOrId}/signup`)}
+            >
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Já Inscrito — Ver Inscrição
+            </Button>
+          </div>
         ) : (
           <Button
             size="lg"

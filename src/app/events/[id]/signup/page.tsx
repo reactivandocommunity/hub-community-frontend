@@ -22,6 +22,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback } from 'react';
 
+import { AddToCalendarButton } from '@/components/add-to-calendar-button';
 import { FadeIn } from '@/components/animations';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -304,6 +305,22 @@ export default function EventSignupPage() {
                   </a>
                 </div>
               )}
+
+              <AddToCalendarButton
+                title={event.title}
+                description={event.description}
+                startDate={event.start_date}
+                endDate={event.end_date}
+                location={
+                  event.location
+                    ? event.location.full_address || event.location.title || event.location.city
+                    : undefined
+                }
+                isOnline={event.is_online}
+                callLink={callLink}
+                variant="default"
+                size="lg"
+              />
 
               <div className="pt-4 flex gap-3 justify-center">
                 <Link href={`/events/${event.slug || slugOrId}`}>
@@ -696,6 +713,22 @@ export default function EventSignupPage() {
                   </p>
                 </div>
               )}
+
+              <AddToCalendarButton
+                title={event.title}
+                description={event.description}
+                startDate={event.start_date}
+                endDate={event.end_date}
+                location={
+                  event.location
+                    ? event.location.full_address || event.location.title || event.location.city
+                    : undefined
+                }
+                isOnline={event.is_online}
+                callLink={callLink || event.call_link}
+                variant="default"
+                size="lg"
+              />
 
               <Link href={`/events/${event.slug || slugOrId}`}>
                 <Button className="rounded-full" size="lg">

@@ -7,6 +7,7 @@ import {
   Check,
   Github,
   Globe,
+  ImagePlus,
   Instagram,
   Linkedin,
   Loader2,
@@ -15,11 +16,13 @@ import {
   Phone,
   Save,
   Twitter,
+  Upload,
   User,
+  X,
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { FadeIn } from '@/components/animations';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,6 +33,26 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/auth-context';
 import { GET_USER_BY_USERNAME, UPDATE_PROFILE } from '@/lib/queries';
 
+const BFF_URL = (process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4001/graphql').replace('/graphql', '');
+
+async function uploadFile(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${BFF_URL}/upload`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || 'Erro ao fazer upload.');
+  }
+
+  const data = await response.json();
+  return data.url;
+}
+
 export default function EditProfilePage() {
   const { user, isAuthenticated, isLoading: authLoading, syncUser } = useAuth();
   const router = useRouter();
@@ -37,6 +60,12 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  // Upload states
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -80,6 +109,36 @@ export default function EditProfilePage() {
     }
   }, [isAuthenticated, authLoading, router]);
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      const url = await uploadFile(file);
+      setAvatarUrl(url);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar foto de perfil.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCover(true);
+    try {
+      const url = await uploadFile(file);
+      setCoverPhotoUrl(url);
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar foto de capa.');
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError('');
@@ -102,7 +161,6 @@ export default function EditProfilePage() {
         },
       });
 
-      // Sync to auth context
       if (syncUser) {
         syncUser({
           name: name || undefined,
@@ -146,10 +204,32 @@ export default function EditProfilePage() {
 
   if (!isAuthenticated) return null;
 
+  // Hidden file inputs
+  const fileInputs = (
+    <>
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleAvatarUpload}
+      />
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleCoverUpload}
+      />
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Cover Photo Preview */}
-      <div className="relative h-40 sm:h-52 overflow-hidden">
+      {fileInputs}
+
+      {/* Cover Photo Area */}
+      <div className="relative h-44 sm:h-56 overflow-hidden">
         {coverPhotoUrl ? (
           <Image
             src={coverPhotoUrl}
@@ -164,7 +244,7 @@ export default function EditProfilePage() {
         <div className="absolute inset-0 bg-black/20" />
 
         {/* Back button */}
-        <div className="relative container mx-auto px-4 sm:px-6 pt-4">
+        <div className="relative container mx-auto px-4 sm:px-6 pt-4 flex items-start justify-between">
           <button
             onClick={() => router.push('/profile')}
             className="flex items-center gap-2 text-white/90 hover:text-white transition-colors text-sm font-medium bg-black/20 backdrop-blur-sm rounded-lg px-3 py-2"
@@ -172,21 +252,52 @@ export default function EditProfilePage() {
             <ArrowLeft className="h-4 w-4" />
             Voltar
           </button>
-        </div>
 
-        {/* Avatar overlayed on cover */}
-        <div className="absolute -bottom-14 left-1/2 -translate-x-1/2">
-          <Avatar className="h-28 w-28 ring-4 ring-background shadow-xl">
-            <AvatarImage src={avatarUrl} alt={name || user?.username} className="object-cover" />
-            <AvatarFallback className="text-2xl bg-muted">
-              {name ? getInitials(name) : user?.username?.charAt(0)?.toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          {/* Change cover button */}
+          <button
+            onClick={() => coverInputRef.current?.click()}
+            disabled={uploadingCover}
+            className="flex items-center gap-2 text-white/90 hover:text-white transition-colors text-sm font-medium bg-black/20 backdrop-blur-sm rounded-lg px-3 py-2"
+          >
+            {uploadingCover ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ImagePlus className="h-4 w-4" />
+            )}
+            {uploadingCover ? 'Enviando...' : 'Alterar Capa'}
+          </button>
+        </div>
+      </div>
+
+      {/* Avatar overlapping cover — positioned with enough space */}
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="max-w-2xl mx-auto -mt-16 relative z-10 flex justify-center">
+          <div className="relative group">
+            <Avatar className="h-32 w-32 ring-4 ring-background shadow-xl">
+              <AvatarImage src={avatarUrl} alt={name || user?.username} className="object-cover" />
+              <AvatarFallback className="text-2xl bg-muted">
+                {name ? getInitials(name) : user?.username?.charAt(0)?.toUpperCase() || 'U'}
+              </AvatarFallback>
+            </Avatar>
+
+            {/* Upload overlay */}
+            <button
+              onClick={() => avatarInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              {uploadingAvatar ? (
+                <Loader2 className="h-6 w-6 text-white animate-spin" />
+              ) : (
+                <Camera className="h-6 w-6 text-white" />
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 sm:px-6 pt-20 pb-12">
+      <div className="container mx-auto px-4 sm:px-6 pt-6 pb-12">
         <div className="max-w-2xl mx-auto space-y-8">
 
           {/* Page Title */}
@@ -199,51 +310,8 @@ export default function EditProfilePage() {
             </div>
           </FadeIn>
 
-          {/* Avatar & Cover Photo Section */}
-          <FadeIn direction="up" duration={0.35}>
-            <div className="bg-card rounded-2xl shadow-lg border border-border/50 overflow-hidden">
-              <div className="px-5 py-4 sm:px-6">
-                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Fotos
-                </h2>
-              </div>
-
-              <div className="px-5 sm:px-6 py-4 border-t border-border/40 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="avatar-url" className="flex items-center gap-2 text-sm">
-                    <Camera className="h-4 w-4 text-muted-foreground" />
-                    Foto de Perfil (URL)
-                  </Label>
-                  <Input
-                    id="avatar-url"
-                    type="url"
-                    placeholder="https://exemplo.com/sua-foto.jpg"
-                    value={avatarUrl}
-                    onChange={e => setAvatarUrl(e.target.value)}
-                    className="rounded-xl"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="cover-url" className="flex items-center gap-2 text-sm">
-                    <Camera className="h-4 w-4 text-muted-foreground" />
-                    Foto de Capa (URL)
-                  </Label>
-                  <Input
-                    id="cover-url"
-                    type="url"
-                    placeholder="https://exemplo.com/sua-capa.jpg"
-                    value={coverPhotoUrl}
-                    onChange={e => setCoverPhotoUrl(e.target.value)}
-                    className="rounded-xl"
-                  />
-                </div>
-              </div>
-            </div>
-          </FadeIn>
-
           {/* Personal Info Section */}
-          <FadeIn direction="up" duration={0.4}>
+          <FadeIn direction="up" duration={0.35}>
             <div className="bg-card rounded-2xl shadow-lg border border-border/50 overflow-hidden">
               <div className="px-5 py-4 sm:px-6">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -318,7 +386,7 @@ export default function EditProfilePage() {
           </FadeIn>
 
           {/* Social Links Section */}
-          <FadeIn direction="up" duration={0.45}>
+          <FadeIn direction="up" duration={0.4}>
             <div className="bg-card rounded-2xl shadow-lg border border-border/50 overflow-hidden">
               <div className="px-5 py-4 sm:px-6">
                 <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
@@ -327,6 +395,21 @@ export default function EditProfilePage() {
               </div>
 
               <div className="px-5 sm:px-6 py-4 border-t border-border/40 space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="instagram" className="flex items-center gap-2 text-sm">
+                    <Instagram className="h-4 w-4 text-pink-500" />
+                    Instagram
+                  </Label>
+                  <Input
+                    id="instagram"
+                    type="url"
+                    placeholder="https://instagram.com/seu_usuario"
+                    value={instagram}
+                    onChange={e => setInstagram(e.target.value)}
+                    className="rounded-xl"
+                  />
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="twitter" className="flex items-center gap-2 text-sm">
                     <Twitter className="h-4 w-4 text-sky-500" />
@@ -373,21 +456,6 @@ export default function EditProfilePage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="instagram" className="flex items-center gap-2 text-sm">
-                    <Instagram className="h-4 w-4 text-pink-500" />
-                    Instagram
-                  </Label>
-                  <Input
-                    id="instagram"
-                    type="url"
-                    placeholder="https://instagram.com/seu_usuario"
-                    value={instagram}
-                    onChange={e => setInstagram(e.target.value)}
-                    className="rounded-xl"
-                  />
-                </div>
-
-                <div className="space-y-2">
                   <Label htmlFor="website" className="flex items-center gap-2 text-sm">
                     <Globe className="h-4 w-4 text-emerald-500" />
                     Website
@@ -406,11 +474,14 @@ export default function EditProfilePage() {
           </FadeIn>
 
           {/* Save Button */}
-          <FadeIn direction="up" duration={0.5}>
+          <FadeIn direction="up" duration={0.45}>
             <div className="space-y-3">
               {error && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-center justify-between">
                   <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                  <button onClick={() => setError('')}>
+                    <X className="h-4 w-4 text-red-400" />
+                  </button>
                 </div>
               )}
 
@@ -425,7 +496,7 @@ export default function EditProfilePage() {
 
               <Button
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || uploadingAvatar || uploadingCover}
                 className="w-full rounded-xl h-12 text-base font-medium"
                 size="lg"
               >

@@ -79,7 +79,7 @@ export function UserProfileDetails({ username }: UserProfileDetailsProps) {
         );
     }
 
-    const agenda = user.agenda ?? [];
+    const agenda = (user.agenda ?? []).filter((item: any) => item?.event);
 
     return (
         <FadeIn direction="up" duration={0.3}>
@@ -136,7 +136,7 @@ export function UserProfileDetails({ username }: UserProfileDetailsProps) {
                                 </p>
                             ) : (
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
-                                    {agenda.map((item, index) => (
+                                    {agenda.map((item: any, index: number) => (
                                         <div
                                             key={index}
                                             className="rounded-lg border border-border overflow-hidden"

@@ -67,8 +67,11 @@ export function useTracking() {
 
 /**
  * Hook that automatically tracks a page visit once on mount.
- * Deduplicated per session + route so repeated renders don't fire again.
+ * Uses a short cooldown (30s) to prevent rapid re-fires from React re-mounts,
+ * but allows genuine revisits (e.g. user navigates away and comes back) to be tracked.
  */
+const VISIT_COOLDOWN_MS = 30_000; // 30 seconds
+
 export function usePageVisitTracker(eventDocumentId?: string, route?: string) {
   const { track } = useTracking();
   const tracked = useRef(false);
@@ -81,9 +84,13 @@ export function usePageVisitTracker(eventDocumentId?: string, route?: string) {
 
     const currentRoute = route || (typeof window !== 'undefined' ? window.location.pathname : '');
 
-    // Deduplicate: only track once per session + route
+    // Short cooldown to prevent duplicate fires from React strict-mode / re-mounts,
+    // but still allow the same user to be counted when they genuinely revisit the page.
     const dedupeKey = `tracked_${eventDocumentId}_${currentRoute}`;
-    if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(dedupeKey)) return;
+    if (typeof sessionStorage !== 'undefined') {
+      const lastTracked = sessionStorage.getItem(dedupeKey);
+      if (lastTracked && Date.now() - Number(lastTracked) < VISIT_COOLDOWN_MS) return;
+    }
 
     track({
       eventType: 'page_visit',
@@ -92,7 +99,7 @@ export function usePageVisitTracker(eventDocumentId?: string, route?: string) {
     });
 
     if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(dedupeKey, '1');
+      sessionStorage.setItem(dedupeKey, String(Date.now()));
     }
   }, [eventDocumentId, route, track]);
 }

@@ -4,8 +4,8 @@ import { EventForm } from '@/components/admin/event-form';
 import { FadeIn } from '@/components/animations';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { GET_EVENT_BY_SLUG_OR_ID, UPDATE_EVENT } from '@/lib/queries';
-import { EventInput, EventResponse, UpdateEventResponse } from '@/lib/types';
+import { GET_EVENT_BY_SLUG_OR_ID, UPDATE_EVENT, UPDATE_EVENT_SALE } from '@/lib/queries';
+import { EventInput, EventResponse, UpdateEventResponse, UpdateEventSaleResponse } from '@/lib/types';
 import { useMutation, useQuery } from '@apollo/client';
 import { format } from 'date-fns';
 import { useParams, useRouter } from 'next/navigation';
@@ -29,6 +29,8 @@ export default function EditEventPage() {
 
   const [updateEvent, { loading: mutationLoading }] =
     useMutation<UpdateEventResponse>(UPDATE_EVENT);
+  const [updateEventSale] =
+    useMutation<UpdateEventSaleResponse>(UPDATE_EVENT_SALE);
   const [initialData, setInitialData] = useState<any>(null);
 
   useEffect(() => {
@@ -83,6 +85,40 @@ export default function EditEventPage() {
           data: input,
         },
       });
+
+      // Save products & batches via the separate updateEventSale mutation
+      if (formData.products && formData.products.length > 0) {
+        try {
+          await updateEventSale({
+            variables: {
+              id: eventId,
+              data: {
+                max_slots: Number(formData.max_slots) || 0,
+                products: formData.products.map((p: any) => ({
+                  name: p.name,
+                  enabled: p.enabled !== false,
+                  batches: (p.batches || []).map((b: any) => ({
+                    batch_number: Number(b.batch_number) || 1,
+                    value: Number(b.value) || 0,
+                    max_quantity: Number(b.max_quantity) || 0,
+                    valid_from: b.valid_from || undefined,
+                    valid_until: b.valid_until || undefined,
+                    enabled: b.enabled !== false,
+                    half_price_eligible: b.half_price_eligible || false,
+                  })),
+                })),
+              },
+            },
+          });
+        } catch (saleError) {
+          console.error('Error updating event sale:', saleError);
+          toast({
+            variant: 'destructive',
+            title: 'Erro parcial',
+            description: 'Evento atualizado, mas houve um erro ao salvar os produtos/lotes.',
+          });
+        }
+      }
 
       toast({
         title: 'Evento atualizado',

@@ -318,6 +318,8 @@ export const SIGN_IN = gql`
   mutation SignIn($identifier: String!, $password: String!) {
     signIn(identifier: $identifier, password: $password) {
       token
+      email
+      username
     }
   }
 `;
@@ -509,6 +511,26 @@ export const DELETE_EVENT = gql`
   mutation DeleteEvent($id: String!) {
     deleteEvent(id: $id) {
       id
+    }
+  }
+`;
+
+export const UPDATE_EVENT_SALE = gql`
+  mutation UpdateEventSale($id: String!, $data: EventSaleInput!) {
+    updateEventSale(id: $id, data: $data) {
+      id
+      products {
+        id
+        name
+        enabled
+        batches {
+          id
+          batch_number
+          value
+          max_quantity
+          enabled
+        }
+      }
     }
   }
 `;

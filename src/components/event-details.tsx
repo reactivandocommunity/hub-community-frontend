@@ -70,6 +70,7 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
   const { data: signupCheckData } = useQuery(IS_USER_SIGNED_UP, {
     variables: { eventId: slugOrId, email: user?.email || '' },
     skip: !isAuthenticated || !user?.email,
+    fetchPolicy: 'network-only',
   });
 
   const isAlreadySignedUp = signupCheckData?.isUserSignedUp?.is_signed_up;
@@ -415,23 +416,26 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
             );
           })()}
         </div>
-        <Button
-          size="lg"
-          className="rounded-full w-full font-semibold"
-          disabled={!event.subscription_link}
-          onClick={() => {
-            if (!event.subscription_link) {
-              alert('Link de inscrição não disponível.');
-              return;
-            }
-            if (typeof window !== 'undefined') {
-              window.open(event.subscription_link, '_blank');
-            }
-          }}
-        >
-          <Calendar className="h-4 w-4 mr-2" />
-          Participar do Evento
-        </Button>
+        {isAlreadySignedUp ? (
+          <Button
+            size="lg"
+            className="rounded-full w-full font-semibold bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => router.push(`/events/${event?.slug || slugOrId}/signup`)}
+          >
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+            Já Inscrito — Ver Detalhes
+          </Button>
+        ) : (
+          <Button
+            size="lg"
+            className="rounded-full w-full font-semibold"
+            disabled={!hasInternalRegistration && !event.subscription_link}
+            onClick={handleParticipate}
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            Participar do Evento
+          </Button>
+        )}
       </div>
 
       {/* Main Content — single-column flowing layout */}

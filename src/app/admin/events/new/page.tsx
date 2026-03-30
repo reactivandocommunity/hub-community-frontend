@@ -6,14 +6,16 @@ import { useRouter } from 'next/navigation';
 import { EventForm } from '@/components/admin/event-form';
 import { FadeIn } from '@/components/animations';
 import { useToast } from '@/hooks/use-toast';
-import { CREATE_EVENT } from '@/lib/queries';
-import { CreateEventResponse, EventInput } from '@/lib/types';
+import { CREATE_EVENT, UPDATE_EVENT_SALE } from '@/lib/queries';
+import { CreateEventResponse, EventInput, UpdateEventSaleResponse } from '@/lib/types';
 
 export default function NewEventPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [createEvent, { loading }] =
     useMutation<CreateEventResponse>(CREATE_EVENT);
+  const [updateEventSale] =
+    useMutation<UpdateEventSaleResponse>(UPDATE_EVENT_SALE);
 
   const handleSubmit = async (data: any) => {
     try {
@@ -36,12 +38,48 @@ export default function NewEventPage() {
         variables: { data: input },
       });
 
+      const eventId = responseData?.createEvent?.id;
+
+      // Save products & batches via the separate updateEventSale mutation
+      if (eventId && data.products && data.products.length > 0) {
+        try {
+          await updateEventSale({
+            variables: {
+              id: eventId,
+              data: {
+                max_slots: Number(data.max_slots) || 0,
+                products: data.products.map((p: any) => ({
+                  name: p.name,
+                  enabled: p.enabled !== false,
+                  batches: (p.batches || []).map((b: any) => ({
+                    batch_number: Number(b.batch_number) || 1,
+                    value: Number(b.value) || 0,
+                    max_quantity: Number(b.max_quantity) || 0,
+                    valid_from: b.valid_from || undefined,
+                    valid_until: b.valid_until || undefined,
+                    enabled: b.enabled !== false,
+                    half_price_eligible: b.half_price_eligible || false,
+                  })),
+                })),
+              },
+            },
+          });
+        } catch (saleError) {
+          console.error('Error saving event products:', saleError);
+          toast({
+            variant: 'destructive',
+            title: 'Erro parcial',
+            description: 'Evento criado, mas houve um erro ao salvar os produtos/lotes.',
+          });
+        }
+      }
+
       toast({
         title: 'Evento criado',
         description: 'O evento foi criado com sucesso.',
       });
 
-      return responseData?.createEvent?.id;
+      return eventId;
     } catch (error) {
       console.error('Error creating event:', error);
       toast({

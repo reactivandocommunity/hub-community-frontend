@@ -189,6 +189,8 @@ export interface SignInInput {
 export interface SignInResponse {
   signIn: {
     token: string;
+    email: string;
+    username: string;
   };
 }
 
@@ -353,6 +355,30 @@ export interface UpdateEventResponse {
 export interface DeleteEventResponse {
   deleteEvent: {
     id: string;
+  };
+}
+
+export interface EventSaleInput {
+  max_slots?: number;
+  products?: {
+    name: string;
+    enabled: boolean;
+    batches?: {
+      batch_number: number;
+      value: number;
+      max_quantity: number;
+      valid_from?: string;
+      valid_until?: string;
+      enabled?: boolean;
+      half_price_eligible?: boolean;
+    }[];
+  }[];
+}
+
+export interface UpdateEventSaleResponse {
+  updateEventSale: {
+    id: string;
+    products: Product[];
   };
 }
 

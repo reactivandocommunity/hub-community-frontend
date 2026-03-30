@@ -202,11 +202,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data } = await signInMutation({ variables: input });
 
       if (data?.signIn?.token) {
-        // Extract user info from token or create basic user object
-        // For now, we'll create a basic user object with the identifier
+        // Use the actual user data returned by the BFF
         const user: User = {
-          email: input.identifier,
-          username: input.identifier.split('@')[0], // Simple username extraction
+          email: data.signIn.email || input.identifier,
+          username: data.signIn.username || input.identifier.split('@')[0],
         };
 
         saveToStorage(user, data.signIn.token);

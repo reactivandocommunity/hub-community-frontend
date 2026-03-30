@@ -1,9 +1,10 @@
 'use client';
 
-import { Calendar, LogOut, Mail, Shield, User } from 'lucide-react';
+import { Calendar, LogOut, Mail, Monitor, Moon, Shield, Sun, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { useEffect } from 'react';
 
 import { FadeIn } from '@/components/animations';
@@ -24,6 +25,7 @@ import { useAuth } from '@/contexts/auth-context';
 export default function ProfilePage() {
   const { user, isAuthenticated, signOut, isLoading } = useAuth();
   const { agendas, isLoading: agendasLoading } = useAgenda();
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -262,16 +264,48 @@ export default function ProfilePage() {
                       Editar Perfil
                     </Button>
 
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        /* TODO: Implement settings */
-                      }}
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Configurações
-                    </Button>
+                    {/* Theme Selector */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                        <Sun className="h-4 w-4" />
+                        Aparência
+                      </label>
+                      <div className="grid grid-cols-3 gap-1 p-1 bg-muted/50 rounded-lg">
+                        <button
+                          onClick={() => setTheme('light')}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                            theme === 'light'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <Sun className="h-4 w-4" />
+                          <span className="hidden sm:inline">Claro</span>
+                        </button>
+                        <button
+                          onClick={() => setTheme('dark')}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                            theme === 'dark'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <Moon className="h-4 w-4" />
+                          <span className="hidden sm:inline">Escuro</span>
+                        </button>
+                        <button
+                          onClick={() => setTheme('system')}
+                          className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium transition-all ${
+                            theme === 'system'
+                              ? 'bg-background text-foreground shadow-sm'
+                              : 'text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          <Monitor className="h-4 w-4" />
+                          <span className="hidden sm:inline">Sistema</span>
+                        </button>
+                      </div>
+                    </div>
 
                     <div className="pt-4 border-t">
                       <Button

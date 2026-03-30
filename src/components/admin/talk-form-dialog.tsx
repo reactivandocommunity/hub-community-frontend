@@ -44,6 +44,7 @@ const talkSchema = z.object({
   subtitle: z.string().optional(),
   description: z.any().optional(),
   occur_date: z.string().min(1, 'A data é obrigatória.'),
+  room_description: z.string().optional(),
   speakerIds: z.array(z.string()).default([]),
 });
 
@@ -104,6 +105,7 @@ export function TalkFormDialog({
       subtitle: initialData?.subtitle || '',
       description: initialData?.description || [],
       occur_date: initialData?.occur_date || '',
+      room_description: initialData?.room_description || '',
       speakerIds: initialData?.speakers?.map(s => s.id) || [],
     },
   });
@@ -161,7 +163,7 @@ export function TalkFormDialog({
         .filter(s => data.speakerIds.includes(s.value))
         .map(s => s.data);
 
-      const talkInput = {
+      const talkInput: Record<string, any> = {
         title: data.title,
         subtitle: data.subtitle,
         description: data.description,
@@ -171,9 +173,12 @@ export function TalkFormDialog({
             ? `${data.occur_date}:00`
             : data.occur_date,
         event: currentEventId,
-        room_description: 'Auditório Principal', // Default or could be a field
         highlight: false,
       };
+
+      if (data.room_description?.trim()) {
+        talkInput.room_description = data.room_description.trim();
+      }
 
       if (initialData?.id && !initialData.id.startsWith('new-talk')) {
         // Update existing talk
@@ -277,6 +282,20 @@ export function TalkFormDialog({
                   <FormLabel>Data e Hora</FormLabel>
                   <FormControl>
                     <Input type="datetime-local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="room_description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Sala / Local (opcional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ex: Auditório Principal, Sala 2..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

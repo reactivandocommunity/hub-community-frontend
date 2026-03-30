@@ -16,7 +16,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 import { FadeIn } from '@/components/animations';
 import { Button } from '@/components/ui/button';
@@ -46,7 +46,7 @@ import {
 
 const MANAGER_URL = 'https://manager.hubcommunity.io';
 
-export default function CommunitiesAdminPage() {
+function CommunitiesContent() {
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState('');
@@ -471,5 +471,17 @@ export default function CommunitiesAdminPage() {
         </DialogContent>
       </Dialog>
     </FadeIn>
+  );
+}
+
+export default function CommunitiesAdminPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-20 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    }>
+      <CommunitiesContent />
+    </Suspense>
   );
 }

@@ -11,6 +11,7 @@ import {
   Share2,
   Users,
   Video,
+  Wifi,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -187,9 +188,17 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
     );
   }
 
-  const startDate = adjustToBrazilTimezone(new Date(event.start_date));
-  const endDate = adjustToBrazilTimezone(new Date(event.end_date));
-  const isMultiDay = startDate.toDateString() !== endDate.toDateString();
+  // Event start_date/end_date are proper UTC — display with explicit timezone
+  const startDate = new Date(event.start_date);
+  const endDate = new Date(event.end_date);
+  const TZ = 'America/Sao_Paulo';
+  const isMultiDay =
+    startDate.toLocaleDateString('pt-BR', { timeZone: TZ }) !==
+    endDate.toLocaleDateString('pt-BR', { timeZone: TZ });
+
+  // Talk occur_date is stored as local Brazil time but incorrectly tagged as UTC — strip Z
+  const parseTalkDate = (isoStr: string) =>
+    new Date(isoStr.replace(/Z$/i, ''));
 
   // Group talks by day and then by time
   const talksByDay =
@@ -197,9 +206,9 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
       (acc: Record<string, Record<string, typeof event.talks>>, talk: any) => {
         if (!talk.occur_date) return acc;
 
-        const talkDate = adjustToBrazilTimezone(new Date(talk.occur_date));
-        const dateKey = talkDate.toLocaleDateString('pt-BR');
-        const timeKey = talkDate.toLocaleTimeString('pt-BR', {
+        const rawDate = parseTalkDate(talk.occur_date);
+        const dateKey = rawDate.toLocaleDateString('pt-BR');
+        const timeKey = rawDate.toLocaleTimeString('pt-BR', {
           hour: '2-digit',
           minute: '2-digit',
         });
@@ -258,6 +267,7 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
                     weekday: 'short',
                     day: '2-digit',
                     month: 'short',
+                    timeZone: TZ,
                   })}
                   {isMultiDay && (
                     <>
@@ -265,6 +275,7 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
                       {endDate.toLocaleDateString('pt-BR', {
                         day: '2-digit',
                         month: 'short',
+                        timeZone: TZ,
                       })}
                     </>
                   )}
@@ -280,6 +291,7 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
                   {startDate.toLocaleTimeString('pt-BR', {
                     hour: '2-digit',
                     minute: '2-digit',
+                    timeZone: TZ,
                   })}
                   {isMultiDay && (
                     <>
@@ -287,13 +299,27 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
                       {endDate.toLocaleTimeString('pt-BR', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        timeZone: TZ,
                       })}
                     </>
                   )}
                 </p>
               </div>
             </div>
-            {event.location && (
+            {event.is_online ? (
+              <>
+                <div className="w-px h-8 bg-border/50 hidden sm:block" />
+                <div className="flex items-center gap-2">
+                  <Wifi className="h-4 w-4 text-primary" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Local</p>
+                    <p className="text-sm font-medium text-green-400">
+                      Online
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : event.location ? (
               <>
                 <div className="w-px h-8 bg-border/50 hidden sm:block" />
                 <div className="flex items-center gap-2">
@@ -306,7 +332,7 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
                   </div>
                 </div>
               </>
-            )}
+            ) : null}
           </div>
           <div className="flex items-center gap-4 text-sm">
             <div className="text-center">

@@ -1,11 +1,32 @@
 import { Event } from '../lib/types';
 
-// Function to adjust date to Brazil timezone (+3 hours)
+// Function to adjust date to Brazil timezone (America/Sao_Paulo)
+// Creates a new Date whose UTC methods return the Brazil local time values,
+// so that toLocaleString / toLocaleTimeString display the correct hours.
 export const adjustToBrazilTimezone = (date: Date): Date => {
-  // Create a new date object and add 3 hours
-  const adjustedDate = new Date(date);
-  // adjustedDate.setHours(adjustedDate.getHours() + 3);
-  return adjustedDate;
+  // Format in Brazil timezone to get the local date/time parts
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value || '0';
+
+  return new Date(
+    Number(get('year')),
+    Number(get('month')) - 1,
+    Number(get('day')),
+    Number(get('hour')),
+    Number(get('minute')),
+    Number(get('second'))
+  );
 };
 
 // Function to validate if event start date is ahead of current date

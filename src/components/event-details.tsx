@@ -3,6 +3,7 @@
 import { useQuery } from '@apollo/client';
 import {
   Calendar,
+  CheckCircle2,
   Clock,
   ExternalLink,
   MapPin,
@@ -13,18 +14,18 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { FadeIn } from '@/components/animations';
 import { EventDetailsSkeleton } from '@/components/event-details-skeleton';
-import { EventRegistrationForm } from '@/components/event-registration-form';
 import { TalkCard } from '@/components/talk-card';
 import { Button } from '@/components/ui/button';
 import { ExpandableRichText } from '@/components/ui/expandable-rich-text';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/auth-context';
 import { trackViewEventDetail } from '@/lib/analytics';
-import { GET_AGENDA_BY_EVENT_ID, GET_EVENT_BY_SLUG_OR_ID } from '@/lib/queries';
+import { GET_AGENDA_BY_EVENT_ID, GET_EVENT_BY_SLUG_OR_ID, IS_USER_SIGNED_UP } from '@/lib/queries';
 import { adjustToBrazilTimezone } from '@/utils/event';
 
 interface EventDetailsProps {
@@ -32,11 +33,11 @@ interface EventDetailsProps {
 }
 
 export function EventDetails({ slugOrId }: EventDetailsProps) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const router = useRouter();
   const [optimisticAgendaTalks, setOptimisticAgendaTalks] = useState<
     Set<string>
   >(new Set());
-  const [isRegistrationFormOpen, setIsRegistrationFormOpen] = useState(false);
 
   // Track event detail view
   useEffect(() => {
@@ -64,21 +65,30 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
     fetchPolicy: 'cache-and-network',
   });
 
+  // Check if user is already signed up
+  const { data: signupCheckData } = useQuery(IS_USER_SIGNED_UP, {
+    variables: { eventId: slugOrId, email: user?.email || '' },
+    skip: !isAuthenticated || !user?.email,
+  });
+
+  const isAlreadySignedUp = signupCheckData?.isUserSignedUp?.is_signed_up;
+  const callLink = signupCheckData?.isUserSignedUp?.call_link;
+
+  // Check if event has internal registration (products with enabled batches)
+  const hasInternalRegistration =
+    event?.products?.some((p: any) => p.enabled && p.batches?.some((b: any) => b.enabled));
+
   // Handle agenda changes
   const handleAgendaChange = () => {
     setOptimisticAgendaTalks(new Set()); // Reset optimistic state
     refetchAgenda();
   };
 
-  // Handle registration form submission
-  const handleRegistrationSubmit = async (data: {
-    fullName: string;
-    email: string;
-    phone: string;
-  }) => {
-    // TODO: Implement API call to register user for event
-    // For now, just redirect to subscription link if available
-    if (event?.subscription_link) {
+  // Handle "Participar" button click
+  const handleParticipate = () => {
+    if (hasInternalRegistration) {
+      router.push(`/events/${event?.slug || slugOrId}/signup`);
+    } else if (event?.subscription_link) {
       window.open(event.subscription_link, '_blank');
     }
   };
@@ -290,24 +300,21 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                size="lg"
-                className="bg-white text-gray-900 hover:bg-gray-100 rounded-full px-6 font-semibold shadow-lg"
-                disabled={!event.subscription_link}
-                onClick={() => {
-                  if (!event.subscription_link) {
-                    alert('Link de inscrição não disponível.');
-                    return;
-                  }
-
-                  if (typeof window !== 'undefined') {
-                    window.open(event.subscription_link, '_blank');
-                  }
-                }}
-              >
-                <Calendar className="h-4 w-4 mr-2" />
-                Participar do Evento
-              </Button>
+              {isAlreadySignedUp ? (
+                <div className="flex items-center gap-2 bg-green-500/20 text-green-400 rounded-full px-6 py-2.5 font-semibold">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Você já está inscrito
+                </div>
+              ) : (
+                <Button
+                  size="lg"
+                  className="bg-white text-gray-900 hover:bg-gray-100 rounded-full px-6 font-semibold shadow-lg"
+                  onClick={handleParticipate}
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Participar do Evento
+                </Button>
+              )}
               <Button
                 size="lg"
                 variant="outline"
@@ -645,13 +652,29 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
         </section>
       </div>
 
-      {/* Registration Form */}
-      <EventRegistrationForm
-        isOpen={isRegistrationFormOpen}
-        onClose={() => setIsRegistrationFormOpen(false)}
-        onSubmit={handleRegistrationSubmit}
-        eventTitle={typeof event.title === 'string' ? event.title : undefined}
-      />
+      {/* Online Event Call Link for signed-up users */}
+      {isAlreadySignedUp && event.is_online && callLink && (
+        <div className="container mx-auto px-4 pb-8">
+          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                <Video className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Evento Online</h3>
+                <p className="text-sm text-muted-foreground">Acesse a chamada do evento</p>
+              </div>
+            </div>
+            <a href={callLink} target="_blank" rel="noopener noreferrer">
+              <Button className="rounded-full gap-2">
+                <Video className="h-4 w-4" />
+                Acessar
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+            </a>
+          </div>
+        </div>
+      )}
     </div>
     </FadeIn>
   );

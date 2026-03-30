@@ -206,6 +206,7 @@ export const GET_EVENT_BY_SLUG_OR_ID = gql`
       images
       max_slots
       subscription_link
+      is_online
       communities {
         id
         slug
@@ -251,6 +252,53 @@ export const GET_EVENT_BY_SLUG_OR_ID = gql`
         full_address
         city
       }
+    }
+  }
+`;
+
+// Event Signup Mutations & Queries
+export const SIGNUP_TO_EVENT = gql`
+  mutation SignupToEvent(
+    $eventId: String!
+    $name: String!
+    $email: String!
+    $batch_id: String!
+    $coupon_code: String
+    $is_student: Boolean
+    $phone_number: String
+  ) {
+    signupToEvent(
+      eventId: $eventId
+      name: $name
+      email: $email
+      batch_id: $batch_id
+      coupon_code: $coupon_code
+      is_student: $is_student
+      phone_number: $phone_number
+    ) {
+      success
+      message
+      payment
+      is_free
+    }
+  }
+`;
+
+export const IS_USER_SIGNED_UP = gql`
+  query IsUserSignedUp($eventId: String!, $email: String!) {
+    isUserSignedUp(eventId: $eventId, email: $email) {
+      is_signed_up
+      call_link
+    }
+  }
+`;
+
+export const VALIDATE_COUPON = gql`
+  query ValidateCoupon($eventSlug: String!, $code: String!) {
+    validateCoupon(eventSlug: $eventSlug, code: $code) {
+      valid
+      discount_percentage
+      message
     }
   }
 `;

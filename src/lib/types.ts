@@ -60,6 +60,8 @@ export interface Speaker {
   name: string;
   avatar?: string;
   biography?: string | BlocksContent;
+  highlight?: boolean;
+  talks?: { id: string; title: string }[];
   socials?: Link[];
 }
 
@@ -97,6 +99,8 @@ export interface Event {
   images?: string[];
   subscription_link?: string;
   pixai_token_integration?: string;
+  is_online?: boolean;
+  call_link?: string;
   communities: {
     id: string;
     title: string;
@@ -322,6 +326,8 @@ export interface EventInput {
   end_date: string;
   max_slots?: number;
   pixai_token_integration?: string;
+  is_online?: boolean;
+  call_link?: string;
   products?: string[]; // IDs of products
   communities?: string[]; // IDs of communities
   location?: string; // ID of location

@@ -547,11 +547,24 @@ export const CREATE_SPEAKER = gql`
 `;
 
 export const GET_SPEAKERS = gql`
-  query GetSpeakers {
-    speakers {
+  query GetSpeakers($filters: SpeakerFilter, $sort: [SpeakerSort], $pagination: PaginationInput, $search: String) {
+    speakers(filters: $filters, sort: $sort, pagination: $pagination, search: $search) {
       data {
         id
         name
+        avatar
+        highlight
+        biography
+        talks {
+          id
+          title
+        }
+      }
+      meta {
+        total
+        page
+        pageSize
+        pageCount
       }
     }
   }
@@ -581,6 +594,27 @@ export const UPDATE_TALK = gql`
         name
         id
       }
+    }
+  }
+`;
+
+export const DELETE_SPEAKER = gql`
+  mutation DeleteSpeaker($id: String!) {
+    deleteSpeaker(id: $id) {
+      id
+      name
+    }
+  }
+`;
+
+export const UPDATE_SPEAKER = gql`
+  mutation UpdateSpeaker($id: String!, $data: SpeakerInput!) {
+    updateSpeaker(id: $id, data: $data) {
+      id
+      name
+      avatar
+      highlight
+      biography
     }
   }
 `;

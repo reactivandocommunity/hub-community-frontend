@@ -1,6 +1,7 @@
 'use client';
 
 import { CommunityFormDialog } from '@/components/admin/community-form-dialog';
+import { ImageCropDialog } from '@/components/admin/image-crop-dialog';
 import { LocationFormDialog } from '@/components/admin/location-form-dialog';
 import { ProductFormDialog } from '@/components/admin/product-form-dialog';
 import { TalkFormDialog } from '@/components/admin/talk-form-dialog';
@@ -16,7 +17,9 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GET_COMMUNITIES, GET_LOCATIONS } from '@/lib/queries';
 import { Community, EventLocation, Product, Talk } from '@/lib/types';
@@ -24,14 +27,21 @@ import { useQuery } from '@apollo/client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   Calendar,
+  ImagePlus,
+  Link as LinkIcon,
+  Loader2,
   MapPin,
   Plus,
   Trash2,
+  Upload,
   User as UserIcon,
   Users,
+  Video,
+  X,
 } from 'lucide-react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
@@ -52,6 +62,8 @@ const eventSchema = z.object({
     message: 'O número de vagas deve ser pelo menos 1.',
   }),
   pixai_token_integration: z.string().optional(),
+  is_online: z.boolean().optional(),
+  call_link: z.string().optional(),
   description: z.any().optional(), // Complex type, validating as any for now
   location: z.any().optional(), // Stores the ID or object during interaction
   communityId: z.string().optional(),
@@ -143,6 +155,59 @@ export function EventForm({
     initialData?.products || []
   );
 
+  // Image Upload State
+  const [coverImagePreview, setCoverImagePreview] = useState<string | null>(
+    (initialData as any)?.coverImage || null
+  );
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Crop Dialog State
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
+
+  const handleImageSelect = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    // Read as data URL and open crop dialog
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setRawImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleCropComplete = useCallback((croppedFile: File, previewUrl: string) => {
+    setCoverImageFile(croppedFile);
+    setCoverImagePreview(previewUrl);
+    setCropDialogOpen(false);
+    setRawImageSrc(null);
+  }, []);
+
+  const handleCropClose = useCallback(() => {
+    setCropDialogOpen(false);
+    setRawImageSrc(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      const file = e.dataTransfer.files?.[0];
+      if (file) handleImageSelect(file);
+    },
+    [handleImageSelect]
+  );
+
+  const handleRemoveImage = () => {
+    setCoverImagePreview(null);
+    setCoverImageFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventSchema),
     defaultValues: initialData || {
@@ -152,6 +217,8 @@ export function EventForm({
       end_date: '',
       max_slots: 0,
       pixai_token_integration: '',
+      is_online: false,
+      call_link: '',
       description: [],
       location: undefined,
       communityId: undefined,
@@ -159,6 +226,8 @@ export function EventForm({
       products: [],
     },
   });
+
+  const isOnline = form.watch('is_online');
 
   const generateSlug = () => {
     const title = form.getValues('title');
@@ -233,9 +302,46 @@ export function EventForm({
     return undefined;
   };
 
+  const handleFormSubmit = async (data: EventFormValues) => {
+    const eventId = await onSubmit(data);
+
+    // Upload cover image if a new file was selected
+    if (eventId && coverImageFile) {
+      setIsUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append('files', coverImageFile);
+
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (uploadRes.ok) {
+          const uploadedFiles = await uploadRes.json();
+          const fileIds = uploadedFiles.map((f: any) => f.id);
+
+          // Link uploaded file to the event
+          await fetch('/api/upload', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              eventDocumentId: eventId,
+              fileIds,
+            }),
+          });
+        }
+      } catch (err) {
+        console.error('Error uploading cover image:', err);
+      } finally {
+        setIsUploading(false);
+      }
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
         <Tabs defaultValue="general" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general">Geral</TabsTrigger>
@@ -361,6 +467,129 @@ export function EventForm({
                   </FormItem>
                 )}
               />
+            </div>
+
+            {/* Online Event Section */}
+            <div className="space-y-4 rounded-lg border p-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-base font-semibold flex items-center gap-2">
+                    <Video className="h-4 w-4" />
+                    Evento Online
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Ative se o evento será realizado online
+                  </p>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="is_online"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {isOnline && (
+                <FormField
+                  control={form.control}
+                  name="call_link"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <LinkIcon className="h-4 w-4" />
+                        Link da Chamada
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="https://meet.google.com/xxx-yyyy-zzz"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Link do Google Meet, Zoom, ou outra plataforma de videoconferência.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Cover Image Upload Section */}
+            <div className="space-y-4 rounded-lg border p-4">
+              <Label className="text-base font-semibold flex items-center gap-2">
+                <ImagePlus className="h-4 w-4" />
+                Imagem de Capa
+              </Label>
+
+              {coverImagePreview ? (
+                <div className="relative rounded-lg overflow-hidden border">
+                  <Image
+                    src={coverImagePreview}
+                    alt="Capa do evento"
+                    width={800}
+                    height={400}
+                    className="w-full h-48 object-cover"
+                    unoptimized
+                  />
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                    isDragOver
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                  }`}
+                >
+                  <Upload className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-sm font-medium text-foreground">
+                    Clique para selecionar ou arraste uma imagem
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PNG, JPG ou WebP (recomendado 1200×630)
+                  </p>
+                </div>
+              )}
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageSelect(file);
+                }}
+              />
+
+              {isUploading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Enviando imagem...
+                </div>
+              )}
             </div>
 
             {/* Location Section */}
@@ -657,6 +886,16 @@ export function EventForm({
           </Button>
         </div>
       </form>
+
+      {/* Image Crop Dialog */}
+      {rawImageSrc && (
+        <ImageCropDialog
+          open={cropDialogOpen}
+          imageSrc={rawImageSrc}
+          onClose={handleCropClose}
+          onCropComplete={handleCropComplete}
+        />
+      )}
     </Form>
   );
 }

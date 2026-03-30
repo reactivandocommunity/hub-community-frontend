@@ -228,131 +228,20 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
   return (
     <FadeIn direction="up" duration={0.3}>
     <div className="min-h-screen bg-background">
-      {/* Hero Section — only event title over the image */}
-      <div className="relative min-h-56 md:min-h-72 lg:min-h-[360px] bg-black overflow-hidden">
+      {/* Hero Section — title only, tight to the card below */}
+      <div className="relative bg-black overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-700"
           style={{
             backgroundImage: `url(${event.images?.[0] || '/placeholder.jpg'})`,
           }}
         ></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/70 to-black/40"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30"></div>
 
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-4 h-full flex items-end pb-10 md:pb-14 pt-24 md:pt-32">
-          <div className="text-white max-w-4xl">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-5 drop-shadow-lg">
-              {typeof event.title === 'string' ? event.title : 'Evento'}
-            </h1>
-
-            <div className="flex flex-wrap gap-x-6 gap-y-2 mb-7 text-white/90">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 opacity-70" />
-                <span className="text-sm md:text-base">
-                  {startDate.toLocaleDateString('pt-BR', {
-                    day: '2-digit',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                  {isMultiDay && (
-                    <>
-                      {' — '}
-                      {endDate.toLocaleDateString('pt-BR', {
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
-                    </>
-                  )}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 opacity-70" />
-                <span className="text-sm md:text-base">
-                  {startDate.toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  {isMultiDay && (
-                    <>
-                      {' até '}
-                      {endDate.toLocaleTimeString('pt-BR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </>
-                  )}
-                </span>
-              </div>
-              {event.talks?.length > 0 && Array.isArray(event.talks) && (
-                <div className="flex items-center gap-2">
-                  <Video className="h-4 w-4 opacity-70" />
-                  <span className="text-sm md:text-base">{event.talks.length} palestras</span>
-                </div>
-              )}
-              {event.communities?.length > 0 &&
-                Array.isArray(event.communities) && (
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 opacity-70" />
-                    <span className="text-sm md:text-base">{event.communities.length} comunidades</span>
-                  </div>
-                )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              {isAlreadySignedUp ? (
-                <div className="flex items-center gap-2 bg-green-500/20 text-green-400 rounded-full px-6 py-2.5 font-semibold">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Você já está inscrito
-                </div>
-              ) : (
-                <Button
-                  size="lg"
-                  className="bg-white text-gray-900 hover:bg-gray-100 rounded-full px-6 font-semibold shadow-lg"
-                  onClick={handleParticipate}
-                >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Participar do Evento
-                </Button>
-              )}
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/40 text-white hover:bg-white/10 bg-white/5 backdrop-blur-sm rounded-full px-6 w-full sm:w-auto"
-                onClick={() => {
-                  if (
-                    typeof navigator !== 'undefined' &&
-                    typeof window !== 'undefined' &&
-                    'share' in navigator
-                  ) {
-                    navigator.share({
-                      title: `Confira o evento ${
-                        typeof event.title === 'string' ? event.title : 'Evento'
-                      }\n`,
-                      text: `\n${
-                        typeof event?.description === 'string'
-                          ? event.description
-                          : 'Descrição não disponível'
-                      }`,
-                      url: window.location.href,
-                    });
-                  }
-                }}
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Compartilhar
-              </Button>
-              <Link href={`/certificado?event=${event.documentId}`} passHref>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-white/40 text-white hover:bg-white/10 bg-white/5 backdrop-blur-sm rounded-full px-6 w-full sm:w-auto"
-                >
-                  <Award className="h-4 w-4 mr-2" />
-                  Solicitar meu certificado
-                </Button>
-              </Link>
-            </div>
-          </div>
+        <div className="relative container mx-auto px-4 sm:px-6 lg:px-4 pt-24 md:pt-28 pb-8">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg max-w-4xl">
+            {typeof event.title === 'string' ? event.title : 'Evento'}
+          </h1>
         </div>
       </div>
 
@@ -472,16 +361,33 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
             <Share2 className="h-4 w-4 mr-2" />
             Compartilhar
           </Button>
-          <Link href={`/certificado?event=${event.documentId}`} passHref>
-            <Button
-              size="lg"
-              variant="outline"
-              className="rounded-full w-full"
-            >
-              <Award className="h-4 w-4 mr-2" />
-              Solicitar certificado
-            </Button>
-          </Link>
+          {(() => {
+            const eventHasPassed = new Date() > endDate;
+            const certificateDisabled = isAuthenticated && !eventHasPassed;
+
+            const handleCertificateClick = () => {
+              if (certificateDisabled) return;
+              if (!isAuthenticated) {
+                router.push(`/?login=true&redirect=${encodeURIComponent(`/events/${event.slug || slugOrId}`)}`);
+              } else {
+                router.push(`/certificado?event=${event.documentId}`);
+              }
+            };
+
+            return (
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full w-full"
+                disabled={certificateDisabled}
+                onClick={handleCertificateClick}
+              >
+                <Award className="h-4 w-4 mr-2" />
+                <span className="sm:hidden">Certificado</span>
+                <span className="hidden sm:inline">Solicitar certificado</span>
+              </Button>
+            );
+          })()}
         </div>
         <Button
           size="lg"

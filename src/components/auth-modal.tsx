@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -21,10 +22,12 @@ import { Loader2, Lock, Mail, User } from 'lucide-react';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  redirectUrl?: string | null;
 }
 
-export function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, redirectUrl }: AuthModalProps) {
   const { signIn, signUp, forwardPassword, isLoading } = useAuth();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('signin');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -59,6 +62,9 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
         onClose();
         setSuccess('');
         setSignInData({ identifier: '', password: '' });
+        if (redirectUrl) {
+          router.push(redirectUrl);
+        }
       }, 1500);
     } catch (error) {
       setError('Erro ao fazer login. Verifique suas credenciais.');

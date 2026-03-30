@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useQuery } from '@apollo/client';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -12,7 +13,10 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, Clock } from 'lucide-react';
+import { GET_EVENT_BY_SLUG_OR_ID } from '@/lib/queries';
+import { adjustToBrazilTimezone } from '@/utils/event';
+import Link from 'next/link';
 
 export default function CertificadoPage() {
   return (
@@ -31,6 +35,13 @@ export default function CertificadoPage() {
 function CertificadoContent() {
   const searchParams = useSearchParams();
   const eventId = searchParams.get('event') || 'q1y8wohrfis0ox81y5xr125w';
+
+  const { data: eventData, loading: eventLoading } = useQuery<{ eventBySlugOrId: any }>(
+    GET_EVENT_BY_SLUG_OR_ID,
+    { variables: { slugOrId: eventId } }
+  );
+
+  const event = eventData?.eventBySlugOrId;
 
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -54,7 +65,6 @@ function CertificadoContent() {
     setError('');
     
     try {
-      // Remover caracteres especiais do CPF e Phone
       const cleanIdentifier = formData.identifier.replace(/\D/g, '');
       const cleanPhone = formData.phone_number.replace(/\D/g, '');
 
@@ -85,6 +95,44 @@ function CertificadoContent() {
       setLoading(false);
     }
   };
+
+  // Loading event data
+  if (eventLoading) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Check if the event has ended
+  if (event?.end_date) {
+    const endDate = adjustToBrazilTimezone(new Date(event.end_date));
+    const now = new Date();
+    if (now <= endDate) {
+      return (
+        <div className="container max-w-2xl mx-auto py-20 px-4 min-h-[80vh] flex items-center justify-center">
+          <Card className="w-full text-center shadow-lg border-amber-500/20">
+            <CardContent className="pt-10 pb-8 flex flex-col items-center">
+              <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mb-6">
+                <Clock className="w-10 h-10 text-amber-500" />
+              </div>
+              <h2 className="text-3xl font-bold mb-4">Evento em andamento</h2>
+              <p className="text-muted-foreground mb-8 text-lg max-w-md">
+                O certificado estará disponível para solicitação após a conclusão do evento
+                {event.title ? ` "${event.title}"` : ''}.
+              </p>
+              <Link href={`/events/${event.slug || eventId}`}>
+                <Button size="lg" variant="outline" className="rounded-full">
+                  Voltar para o evento
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+  }
 
   if (success) {
     return (

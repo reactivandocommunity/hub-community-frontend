@@ -24,6 +24,8 @@ export default function NewEventPage() {
         end_date: new Date(data.end_date).toISOString(),
         max_slots: Number(data.max_slots),
         pixai_token_integration: data.pixai_token_integration,
+        is_online: data.is_online || false,
+        call_link: data.call_link || '',
         description: data.description, // Assuming it's compatible or handled by backend/form
         communities: data.communityId ? [data.communityId] : [],
         location: data.location?.id || data.location,

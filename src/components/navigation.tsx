@@ -40,6 +40,8 @@ function NavigationContent() {
     }
   }, [searchParams]);
 
+  const redirectUrl = searchParams.get('redirect');
+
   const handleSignOut = () => {
     signOut();
   };
@@ -121,6 +123,12 @@ function NavigationContent() {
                           <Link href="/admin/events" className="cursor-pointer">
                             <Calendar className="mr-2 h-4 w-4" />
                             <span>Gerenciar Eventos</span>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/speakers" className="cursor-pointer">
+                            <Users className="mr-2 h-4 w-4" />
+                            <span>Gerenciar Palestrantes</span>
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
@@ -214,6 +222,7 @@ function NavigationContent() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        redirectUrl={redirectUrl}
       />
     </>
   );

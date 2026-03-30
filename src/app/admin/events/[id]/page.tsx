@@ -44,12 +44,15 @@ export default function EditEventPage() {
           ? format(new Date(event.end_date), "yyyy-MM-dd'T'HH:mm")
           : '',
         max_slots: event.max_slots || 0,
+        is_online: event.is_online || false,
+        call_link: event.call_link || '',
         description: event.description,
         communityId: event.communities?.[0]?.id, // Get the first community ID if available
         location: event.location,
         id: event.id, // Keep reference for update
         talks: event.talks || [],
         products: event.products || [],
+        coverImage: event.images?.[0] || null,
       });
     }
   }, [data]);
@@ -63,6 +66,8 @@ export default function EditEventPage() {
         end_date: new Date(formData.end_date).toISOString(),
         max_slots: Number(formData.max_slots),
         pixai_token_integration: formData.pixai_token_integration,
+        is_online: formData.is_online || false,
+        call_link: formData.call_link || '',
         description: formData.description,
         location: formData.location?.id || formData.location, // Send ID string
         communities: formData.communityId ? [formData.communityId] : [],

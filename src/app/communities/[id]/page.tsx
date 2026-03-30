@@ -6,6 +6,7 @@ import {
   COMMUNITY_METADATA_QUERY,
   CommunityMetadataResponse,
   fetchGraphQL,
+  getOgImageUrl,
 } from '@/lib/graphql-fetch';
 
 interface CommunityPageProps {
@@ -38,7 +39,7 @@ export async function generateMetadata({
       ? community.short_description.slice(0, 160)
       : `Conheça a comunidade ${community.title} no Hub Community.`;
 
-  const ogImage = community.images?.[0] || '/images/logo-square.png';
+  const ogImage = getOgImageUrl(community.images?.[0]);
 
   const tags = community.tags?.map(t => t.value) || [];
   const membersText = community.members_quantity

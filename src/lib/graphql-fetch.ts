@@ -7,6 +7,19 @@
 const GRAPHQL_URL =
   process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql';
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || 'https://hubcommunity.io';
+
+/**
+ * Generates a proxied OG image URL that goes through our API route,
+ * ensuring social media crawlers can always access the image regardless
+ * of the CMS server's CORS/CSP configuration.
+ */
+export function getOgImageUrl(imageUrl: string | undefined): string {
+  if (!imageUrl) return `${SITE_URL}/images/logo-square.png`;
+  return `${SITE_URL}/api/og-image?url=${encodeURIComponent(imageUrl)}`;
+}
+
 interface GraphQLResponse<T> {
   data?: T;
   errors?: Array<{ message: string }>;

@@ -6,6 +6,7 @@ import {
   EVENT_METADATA_QUERY,
   EventMetadataResponse,
   fetchGraphQL,
+  getOgImageUrl,
 } from '@/lib/graphql-fetch';
 
 interface EventPageProps {
@@ -38,7 +39,7 @@ export async function generateMetadata({
       ? event.description.slice(0, 160)
       : `Confira o evento ${event.title} no Hub Community.`;
 
-  const ogImage = event.images?.[0] || '/images/logo-square.png';
+  const ogImage = getOgImageUrl(event.images?.[0]);
 
   const communityNames = event.communities
     ?.map(c => c.title)

@@ -207,6 +207,7 @@ export const GET_EVENT_BY_SLUG_OR_ID = gql`
       max_slots
       subscription_link
       is_online
+      call_link
       communities {
         id
         slug

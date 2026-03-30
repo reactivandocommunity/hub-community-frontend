@@ -311,25 +311,19 @@ export function EventForm({
       try {
         const formData = new FormData();
         formData.append('files', coverImageFile);
+        // Strapi auto-links the file to the event via these params
+        formData.append('ref', 'api::event.event');
+        formData.append('refId', eventId);
+        formData.append('field', 'images');
 
         const uploadRes = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
 
-        if (uploadRes.ok) {
-          const uploadedFiles = await uploadRes.json();
-          const fileIds = uploadedFiles.map((f: any) => f.id);
-
-          // Link uploaded file to the event
-          await fetch('/api/upload', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              eventDocumentId: eventId,
-              fileIds,
-            }),
-          });
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json();
+          console.error('Upload error:', errData);
         }
       } catch (err) {
         console.error('Error uploading cover image:', err);

@@ -227,6 +227,7 @@ export interface AuthContextType extends AuthState {
   forwardPassword: (email: string) => Promise<void>;
   resetPassword: (code: string, password: string, passwordConfirmation: string) => Promise<void>;
   updatePhone: (phone: string) => Promise<void>;
+  syncUser: (data: Partial<User>) => void;
   validateToken: () => boolean;
   showLogoutAlert: () => void;
   hideLogoutAlert: () => void;

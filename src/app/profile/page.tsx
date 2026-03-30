@@ -1,5 +1,6 @@
 'use client';
 
+import { useQuery } from '@apollo/client';
 import { Calendar, LogOut, Mail, Monitor, Moon, Phone, Shield, Sun, User } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -22,9 +23,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAgenda } from '@/contexts/agenda-context';
 import { useAuth } from '@/contexts/auth-context';
+import { GET_USER_BY_USERNAME } from '@/lib/queries';
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, signOut, isLoading, updatePhone } = useAuth();
+  const { user, isAuthenticated, signOut, isLoading, updatePhone, syncUser } = useAuth();
   const { agendas, isLoading: agendasLoading } = useAgenda();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -33,6 +35,24 @@ export default function ProfilePage() {
   const [isUpdatingPhone, setIsUpdatingPhone] = useState(false);
   const [phoneError, setPhoneError] = useState('');
   const [phoneSuccess, setPhoneSuccess] = useState(false);
+
+  // Fetch fresh user data from BFF to sync with localStorage
+  const { data: freshUserData } = useQuery(GET_USER_BY_USERNAME, {
+    variables: { username: user?.username || '' },
+    skip: !user?.username,
+    fetchPolicy: 'network-only',
+  });
+
+  // Sync fresh data back to auth context
+  useEffect(() => {
+    if (freshUserData?.userByUsername && syncUser) {
+      const fresh = freshUserData.userByUsername;
+      syncUser({
+        phone: fresh.phone || undefined,
+        avatar: fresh.speaker?.avatar || undefined,
+      });
+    }
+  }, [freshUserData]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {

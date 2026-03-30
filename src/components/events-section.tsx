@@ -36,17 +36,22 @@ export function EventsSection({
       filters: debouncedSearchTerm
         ? { title: { contains: debouncedSearchTerm } }
         : {},
+      sort: [{ start_date: 'ASC' }],
     },
   });
 
-  // Filter future events (events that haven't ended yet)
+  // Filter future events (events that haven't ended yet) and sort nearest first
   const futureEvents =
-    data?.events?.data?.filter(event => {
+    (data?.events?.data?.filter(event => {
       if (!event.end_date) return true; // If no end date, consider it future
       const eventEndDate = new Date(event.end_date);
       const now = new Date();
       return eventEndDate >= now;
-    }) || [];
+    }) || []).sort((a, b) => {
+      const dateA = a.start_date ? new Date(a.start_date).getTime() : Infinity;
+      const dateB = b.start_date ? new Date(b.start_date).getTime() : Infinity;
+      return dateA - dateB;
+    });
 
   // Call the onCountChange callback if provided
   React.useEffect(() => {

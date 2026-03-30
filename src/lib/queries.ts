@@ -339,8 +339,8 @@ export const RESET_PASSWORD = gql`
 `;
 
 export const UPDATE_USER_PHONE = gql`
-  mutation UpdateUserPhone($userId: String!, $phone: String!) {
-    updateUserPhone(userId: $userId, phone: $phone) {
+  mutation UpdateUserPhone($email: String!, $phone: String!) {
+    updateUserPhone(email: $email, phone: $phone) {
       id
       username
       email

@@ -569,6 +569,7 @@ export default function EventSignupPage() {
                         className="w-full mt-6 rounded-full"
                         size="lg"
                         onClick={() => setStep('confirm')}
+                        disabled={!user?.phone && !phoneInput.trim()}
                       >
                         {finalPrice === 0 ? 'Confirmar Inscrição' : 'Continuar para pagamento'}
                       </Button>

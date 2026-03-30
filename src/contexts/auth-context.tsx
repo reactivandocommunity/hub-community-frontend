@@ -279,12 +279,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updatePhone = async (phone: string) => {
-    if (!state.user?.id) {
-      throw new Error('User ID not found. Please sign in again.');
+    if (!state.user?.email) {
+      throw new Error('Usuário não encontrado. Faça login novamente.');
     }
     try {
       const { data } = await updateUserPhoneMutation({
-        variables: { userId: state.user.id, phone },
+        variables: { email: state.user.email, phone },
       });
       if (data?.updateUserPhone) {
         const updatedUser: User = {
@@ -302,6 +302,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
   };
+  // Sync partial user data from fresh API responses (e.g., profile page fetch)
+  const syncUser = (data: Partial<User>) => {
+    if (!state.user) return;
+    const updatedUser: User = { ...state.user, ...data };
+    // Only dispatch if something actually changed
+    if (JSON.stringify(updatedUser) !== JSON.stringify(state.user)) {
+      dispatch({ type: 'UPDATE_USER', payload: { user: updatedUser } });
+      if (state.token) {
+        saveToStorage(updatedUser, state.token);
+      }
+    }
+  };
 
   const value: AuthContextType = {
     ...state,
@@ -311,6 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     forwardPassword,
     resetPassword,
     updatePhone,
+    syncUser,
     validateToken,
     showLogoutAlert,
     hideLogoutAlert,

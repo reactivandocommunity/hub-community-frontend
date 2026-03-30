@@ -11,12 +11,20 @@ const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || 'https://hubcommunity.io';
 
 /**
- * Generates a proxied OG image URL that goes through our API route,
- * ensuring social media crawlers can always access the image regardless
- * of the CMS server's CORS/CSP configuration.
+ * Generates the OG image URL for social media previews.
+ * Uses the image URL directly when it's an absolute URL from the CMS,
+ * since the CMS is configured to allow cross-origin access.
+ * Falls back to the proxy route for any edge cases.
  */
 export function getOgImageUrl(imageUrl: string | undefined): string {
   if (!imageUrl) return `${SITE_URL}/images/logo-square.png`;
+
+  // If it's already an absolute URL, use it directly
+  if (imageUrl.startsWith('http')) {
+    return imageUrl;
+  }
+
+  // For relative URLs, proxy through our API route
   return `${SITE_URL}/api/og-image?url=${encodeURIComponent(imageUrl)}`;
 }
 

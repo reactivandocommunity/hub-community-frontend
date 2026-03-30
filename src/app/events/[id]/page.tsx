@@ -34,10 +34,22 @@ export async function generateMetadata({
   }
 
   const title = `${event.title} | Hub Community`;
+
+  // Extract plain text from Strapi 'blocks' rich text format
+  const extractTextFromBlocks = (blocks: unknown): string => {
+    if (typeof blocks === 'string') return blocks.slice(0, 160);
+    if (!Array.isArray(blocks)) return '';
+    return blocks
+      .flatMap((block: { children?: Array<{ text?: string }> }) =>
+        block.children?.map((child) => child.text || '') || []
+      )
+      .join(' ')
+      .slice(0, 160);
+  };
+
   const description =
-    typeof event.description === 'string'
-      ? event.description.slice(0, 160)
-      : `Confira o evento ${event.title} no Hub Community.`;
+    extractTextFromBlocks(event.description) ||
+    `Confira o evento ${event.title} no Hub Community.`;
 
   const ogImage = getOgImageUrl(event.images?.[0]);
 

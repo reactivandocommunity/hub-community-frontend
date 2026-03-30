@@ -12,6 +12,8 @@ import {
   Users,
   Video,
   Wifi,
+  X,
+  ZoomIn,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -39,6 +41,7 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
   const [optimisticAgendaTalks, setOptimisticAgendaTalks] = useState<
     Set<string>
   >(new Set());
+  const [showLightbox, setShowLightbox] = useState(false);
 
   // Track event detail view
   useEffect(() => {
@@ -239,14 +242,23 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
     <FadeIn direction="up" duration={0.3}>
     <div className="min-h-screen bg-background">
       {/* Hero Section — title only, tight to the card below */}
-      <div className="relative bg-black overflow-hidden">
+      <div
+        className="relative bg-black overflow-hidden cursor-pointer group"
+        onClick={() => setShowLightbox(true)}
+      >
         <div
-          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-700"
+          className="absolute inset-0 bg-cover bg-center scale-105 transition-transform duration-700 group-hover:scale-110"
           style={{
             backgroundImage: `url(${event.images?.[0] || '/placeholder.jpg'})`,
           }}
         ></div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-black/30"></div>
+
+        {/* Zoom indicator */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/30 backdrop-blur-sm text-white/70 text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+          <ZoomIn className="h-3.5 w-3.5" />
+          Ver imagem
+        </div>
 
         <div className="relative container mx-auto px-4 sm:px-6 lg:px-4 pt-24 md:pt-28 pb-8">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white drop-shadow-lg max-w-4xl">
@@ -254,6 +266,30 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
           </h1>
         </div>
       </div>
+
+      {/* Fullscreen Image Lightbox */}
+      {showLightbox && event.images?.[0] && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center animate-in fade-in duration-200"
+          onClick={() => setShowLightbox(false)}
+        >
+          <button
+            className="absolute top-4 right-4 z-10 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+            onClick={() => setShowLightbox(false)}
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <Image
+            src={event.images[0]}
+            alt={typeof event.title === 'string' ? event.title : 'Evento'}
+            width={1200}
+            height={800}
+            className="max-w-[95vw] max-h-[90vh] object-contain rounded-lg"
+            unoptimized
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
 
       {/* Quick Info Bar — floating summary strip */}
       <div className="container mx-auto px-4 -mt-5 relative z-10 mb-4">
@@ -444,11 +480,17 @@ export function EventDetails({ slugOrId }: EventDetailsProps) {
         {/* About Section */}
         {event?.description && (
           <section>
-            <h2 className="text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-foreground mb-5 flex items-center gap-2.5">
+              <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-primary/10">
+                <Calendar className="h-4 w-4 text-primary" />
+              </div>
               Sobre o Evento
             </h2>
-            <div className="text-muted-foreground leading-relaxed max-w-3xl">
-              <ExpandableRichText content={event?.description || ''} />
+            <div className="bg-card/50 border border-border/30 rounded-2xl p-5 sm:p-7 relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-primary/60 to-transparent rounded-l-2xl" />
+              <div className="pl-4">
+                <ExpandableRichText content={event?.description || ''} maxLines={15} />
+              </div>
             </div>
           </section>
         )}

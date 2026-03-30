@@ -79,6 +79,13 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* PWA standalone mode — extra 12px bottom offset */
+@media (display-mode: standalone) {
+  .pwa-bottom-offset {
+    bottom: 28px !important;
+  }
+}
+
 /* Dropdown/menu animations for Radix UI */
 [data-state='open'][data-radix-popper-content-wrapper] > * {
   animation: slide-down 0.15s ease-out;

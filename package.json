@@ -45,6 +45,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@strapi/blocks-react-renderer": "^1.0.2",
+    "@tailwindcss/typography": "^0.5.19",
     "@tiptap/extension-placeholder": "^3.4.4",
     "@tiptap/pm": "^3.4.4",
     "@tiptap/react": "^3.4.4",

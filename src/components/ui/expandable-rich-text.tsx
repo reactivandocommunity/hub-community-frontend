@@ -9,11 +9,39 @@ import { cn } from '@/lib/utils';
 interface ExpandableRichTextProps {
   content: BlocksContent | string;
   className?: string;
+  maxLines?: number;
+}
+
+/**
+ * Renders text with newlines converted to <br /> and paragraphs,
+ * preserving the author's formatting.
+ */
+function FormattedText({ text }: { text: string }) {
+  const paragraphs = text.split(/\n\n+/);
+
+  return (
+    <>
+      {paragraphs.map((paragraph, i) => {
+        const lines = paragraph.split('\n');
+        return (
+          <p key={i} className="mb-4 last:mb-0">
+            {lines.map((line, j) => (
+              <React.Fragment key={j}>
+                {line}
+                {j < lines.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </p>
+        );
+      })}
+    </>
+  );
 }
 
 export const ExpandableRichText: React.FC<ExpandableRichTextProps> = ({
   content,
   className,
+  maxLines = 12,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [showButton, setShowButton] = useState(false);
@@ -21,7 +49,7 @@ export const ExpandableRichText: React.FC<ExpandableRichTextProps> = ({
 
   useEffect(() => {
     if (contentRef.current) {
-      // Se o conteúdo tem mais de 4 linhas visíveis, mostra o botão
+      // Show button if content overflows
       setShowButton(
         contentRef.current.scrollHeight > contentRef.current.clientHeight + 2
       );
@@ -33,27 +61,34 @@ export const ExpandableRichText: React.FC<ExpandableRichTextProps> = ({
       <div
         ref={contentRef}
         className={cn(
-          'prose prose-gray max-w-none transition-all',
+          'prose prose-sm sm:prose-base dark:prose-invert max-w-none',
+          'prose-p:text-muted-foreground prose-p:leading-relaxed',
+          'prose-strong:text-foreground prose-strong:font-semibold',
+          'prose-headings:text-foreground prose-headings:font-semibold',
+          'prose-a:text-primary prose-a:no-underline hover:prose-a:underline',
+          'prose-li:text-muted-foreground',
+          'prose-ul:my-2 prose-ol:my-2',
+          'transition-all duration-300 ease-in-out',
           className,
-          !expanded && 'line-clamp-4 overflow-hidden'
+          !expanded && 'overflow-hidden'
         )}
         style={{
-          WebkitLineClamp: !expanded ? 4 : 'unset',
+          WebkitLineClamp: !expanded ? maxLines : 'unset',
           display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
+          WebkitBoxOrient: 'vertical' as const,
         }}
       >
         {typeof content === 'string' ? (
-          <p>{content}</p>
+          <FormattedText text={content} />
         ) : (
           <BlocksRenderer content={content} />
         )}
       </div>
       {showButton && (
-        <div className="flex justify-center">
+        <div className="flex justify-center mt-4">
           <button
             type="button"
-            className="mt-2 mb-4 text-blue-600 hover:underline text-sm font-medium"
+            className="text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-1.5 rounded-full bg-primary/5 hover:bg-primary/10"
             onClick={() => setExpanded(e => !e)}
           >
             {expanded ? 'Ver menos' : 'Ver mais'}

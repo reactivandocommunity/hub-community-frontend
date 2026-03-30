@@ -54,7 +54,7 @@ function NavigationContent() {
   return (
     <>
       {/* Desktop Navigation - floating bottom bar */}
-      <nav className="hidden md:block fixed bottom-4 left-4 right-4 z-50">
+      <nav className="hidden md:block fixed bottom-4 left-4 right-4 z-50 pwa-bottom-offset">
         <div className="container mx-auto max-w-6xl bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 shadow-lg shadow-black/5 dark:shadow-black/20 border border-border/50 rounded-2xl px-6">
           <div className="flex items-center justify-between h-14">
             {/* Logo */}
@@ -163,7 +163,7 @@ function NavigationContent() {
       </nav>
 
       {/* Mobile Navigation - floating bottom icon bar */}
-      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 border border-border/50 rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/20 safe-area-bottom">
+      <nav className="md:hidden fixed bottom-4 left-4 right-4 z-50 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 border border-border/50 rounded-2xl shadow-lg shadow-black/5 dark:shadow-black/20 safe-area-bottom pwa-bottom-offset">
         <div className="flex items-center justify-around h-14">
           <Link
             href="/"

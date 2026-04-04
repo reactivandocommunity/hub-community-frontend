@@ -1,13 +1,8 @@
 import { z } from 'zod';
 
-// Regex para telefone internacional: +55 11 98765-4321
 const phoneRegex = /^\+?[\d\s()-]{8,20}$/;
 
-/**
- * Validação de CPF brasileiro
- * Verifica dígitos verificadores
- */
-function isValidCPF(cpf: string): boolean {
+export function isValidCPF(cpf: string): boolean {
   // Remove caracteres não numéricos
   const cleaned = cpf.replace(/\D/g, '');
 
@@ -38,18 +33,12 @@ function isValidCPF(cpf: string): boolean {
   return true;
 }
 
-/**
- * Schema para nome completo
- */
 export const fullNameSchema = z
   .string()
   .min(1, 'Nome é obrigatório.')
   .min(3, 'Nome deve ter no mínimo 3 caracteres.')
   .max(100, 'Nome deve ter no máximo 100 caracteres.');
 
-/**
- * Schema para telefone internacional
- */
 export const phoneSchema = z
   .string()
   .min(1, 'Telefone é obrigatório.')
@@ -58,26 +47,17 @@ export const phoneSchema = z
     'Informe um número válido com código do país (ex: +55 11 98765-4321).'
   );
 
-/**
- * Schema para telefone opcional
- */
 export const optionalPhoneSchema = z
   .string()
   .regex(phoneRegex, 'Número de telefone inválido.')
   .optional()
   .or(z.literal(''));
 
-/**
- * Schema para CPF brasileiro
- */
 export const cpfSchema = z
   .string()
   .min(1, 'CPF é obrigatório.')
   .refine(isValidCPF, 'CPF inválido.');
 
-/**
- * Schema para perfil de usuário
- */
 export const userProfileSchema = z.object({
   fullName: fullNameSchema,
   email: z.string().email('Email inválido.'),
@@ -87,9 +67,6 @@ export const userProfileSchema = z.object({
 
 export type UserProfileFormValues = z.infer<typeof userProfileSchema>;
 
-/**
- * Schema para registro em evento
- */
 export const eventRegistrationSchema = z.object({
   fullName: fullNameSchema,
   email: z.string().min(1, 'Email é obrigatório.').email('Email inválido.'),

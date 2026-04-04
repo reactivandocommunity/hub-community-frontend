@@ -1,14 +1,3 @@
-/**
- * Schemas Zod centralizados para validação de formulários
- *
- * Uso:
- * ```typescript
- * import { signInSchema, createCommunitySchema } from '@/lib/schemas';
- * import type { SignInFormValues } from '@/lib/schemas';
- * ```
- */
-
-// Auth schemas
 export {
   changePasswordSchema,
   emailSchema,

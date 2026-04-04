@@ -1,31 +1,19 @@
 import { z } from 'zod';
 import { slugSchema, titleSchema } from './community.schema';
 
-/**
- * Schema para data
- */
 export const dateSchema = z.coerce.date({
   required_error: 'Data é obrigatória.',
   invalid_type_error: 'Data inválida.',
 });
 
-/**
- * Schema para data opcional
- */
 export const optionalDateSchema = z.coerce.date().optional().nullable();
 
-/**
- * Schema para número de vagas
- */
 export const maxSlotsSchema = z
   .number()
   .int('Número de vagas deve ser inteiro.')
   .min(1, 'Evento deve ter pelo menos 1 vaga.')
   .max(100000, 'Número de vagas muito alto.');
 
-/**
- * Schema para criar evento (admin)
- */
 export const createEventSchema = z.object({
   title: z.string().min(2, { message: 'O título deve ter pelo menos 2 caracteres.' }),
   slug: z.string().min(2, { message: 'O slug deve ter pelo menos 2 caracteres.' }),
@@ -44,16 +32,10 @@ export const createEventSchema = z.object({
 
 export type CreateEventFormValues = z.infer<typeof createEventSchema>;
 
-/**
- * Schema para editar evento
- */
 export const editEventSchema = createEventSchema;
 
 export type EditEventFormValues = z.infer<typeof editEventSchema>;
 
-/**
- * Schema para talk/palestra (admin)
- */
 export const talkSchema = z.object({
   title: z.string().min(2, 'O título é obrigatório.'),
   subtitle: z.string().optional(),
@@ -65,9 +47,6 @@ export const talkSchema = z.object({
 
 export type TalkFormValues = z.infer<typeof talkSchema>;
 
-/**
- * Schema para palestrante (admin)
- */
 export const speakerSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   biography: z.any().optional(),
@@ -75,9 +54,6 @@ export const speakerSchema = z.object({
 
 export type SpeakerFormValues = z.infer<typeof speakerSchema>;
 
-/**
- * Schema para localização (admin)
- */
 export const locationSchema = z.object({
   title: z.string().min(2, 'O título deve ter pelo menos 2 caracteres.'),
   region: z.string().min(2, 'A região é obrigatória.'),
@@ -90,9 +66,6 @@ export const locationSchema = z.object({
 
 export type LocationFormValues = z.infer<typeof locationSchema>;
 
-/**
- * Schema para lote de ingressos (batch)
- */
 export const batchSchema = z.object({
   batch_number: z.coerce.number().min(1, 'Número do lote obrigatório.'),
   value: z.coerce.number().min(0, 'Valor deve ser positivo.'),
@@ -105,9 +78,6 @@ export const batchSchema = z.object({
 
 export type BatchFormValues = z.infer<typeof batchSchema>;
 
-/**
- * Schema para produto
- */
 export const productSchema = z.object({
   name: z.string().min(2, 'O nome do produto é obrigatório.'),
   enabled: z.boolean().default(true),
@@ -115,9 +85,6 @@ export const productSchema = z.object({
 
 export type ProductFormValues = z.infer<typeof productSchema>;
 
-/**
- * Schema para sessão de votação
- */
 export const votingSessionSchema = z.object({
   title: z.string().min(2, { message: 'O título deve ter pelo menos 2 caracteres.' }),
   description: z.string().optional(),
@@ -130,9 +97,6 @@ export const votingSessionSchema = z.object({
 
 export type VotingSessionFormValues = z.infer<typeof votingSessionSchema>;
 
-/**
- * Schema para opção de votação
- */
 export const votingOptionSchema = z.object({
   name: z.string().min(2, 'O nome é obrigatório.'),
   description: z.string().optional(),

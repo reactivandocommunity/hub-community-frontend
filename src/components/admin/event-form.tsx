@@ -40,42 +40,17 @@ import {
   X,
 } from 'lucide-react';
 import Image from 'next/image';
+import {
+  createEventSchema,
+  type CreateEventFormValues,
+} from '@/lib/schemas';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-
-const eventSchema = z.object({
-  title: z.string().min(2, {
-    message: 'O título deve ter pelo menos 2 caracteres.',
-  }),
-  slug: z.string().min(2, {
-    message: 'O slug deve ter pelo menos 2 caracteres.',
-  }),
-  start_date: z.string({
-    required_error: 'A data de início é obrigatória.',
-  }),
-  end_date: z.string({
-    required_error: 'A data de término é obrigatória.',
-  }),
-  max_slots: z.coerce.number().min(1, {
-    message: 'O número de vagas deve ser pelo menos 1.',
-  }),
-  pixai_token_integration: z.string().optional(),
-  is_online: z.boolean().optional(),
-  call_link: z.string().optional(),
-  description: z.any().optional(), // Complex type, validating as any for now
-  location: z.any().optional(), // Stores the ID or object during interaction
-  communityId: z.string().optional(),
-  talks: z.array(z.any()).optional(),
-  products: z.array(z.any()).optional(),
-});
-
-type EventFormValues = z.infer<typeof eventSchema>;
 
 interface EventFormProps {
-  initialData?: EventFormValues & { id?: string }; // Adjust based on actual data structure
-  onSubmit: (data: EventFormValues) => Promise<string | undefined>;
+  initialData?: CreateEventFormValues & { id?: string };
+  onSubmit: (data: CreateEventFormValues) => Promise<string | undefined>;
   isLoading?: boolean;
 }
 
@@ -208,8 +183,8 @@ export function EventForm({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const form = useForm<EventFormValues>({
-    resolver: zodResolver(eventSchema),
+  const form = useForm<CreateEventFormValues>({
+    resolver: zodResolver(createEventSchema),
     defaultValues: initialData || {
       title: '',
       slug: '',
@@ -302,7 +277,7 @@ export function EventForm({
     return undefined;
   };
 
-  const handleFormSubmit = async (data: EventFormValues) => {
+  const handleFormSubmit = async (data: CreateEventFormValues) => {
     const eventId = await onSubmit(data);
 
     // Upload cover image if a new file was selected

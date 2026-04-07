@@ -275,7 +275,7 @@ export function AuthModal({ isOpen, onClose, redirectUrl }: AuthModalProps) {
                             type="button"
                             onClick={() => setShowSignInPassword(!showSignInPassword)}
                             className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
-                            tabIndex={-1}
+                            aria-label={showSignInPassword ? 'Ocultar senha' : 'Mostrar senha'}
                           >
                             {showSignInPassword ? (
                               <EyeOff className="h-4 w-4" />
@@ -406,7 +406,7 @@ export function AuthModal({ isOpen, onClose, redirectUrl }: AuthModalProps) {
                             type="button"
                             onClick={() => setShowSignUpPassword(!showSignUpPassword)}
                             className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 transition-colors"
-                            tabIndex={-1}
+                            aria-label={showSignUpPassword ? 'Ocultar senha' : 'Mostrar senha'}
                           >
                             {showSignUpPassword ? (
                               <EyeOff className="h-4 w-4" />

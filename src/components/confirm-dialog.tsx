@@ -87,9 +87,9 @@ export function ConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>{cancelLabel}</AlertDialogCancel>
           <AlertDialogAction
-            onClick={(e) => {
+            onClick={async (e) => {
               e.preventDefault();
-              handleConfirm();
+              await handleConfirm();
             }}
             disabled={loading || disabled}
             className={cn(

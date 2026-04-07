@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { slugSchema, titleSchema } from './community.schema';
 
 export const dateSchema = z.coerce.date({
   required_error: 'Data é obrigatória.',

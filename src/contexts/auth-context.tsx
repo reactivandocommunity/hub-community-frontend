@@ -119,7 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     RESET_PASSWORD,
     { errorPolicy: 'all' }
   );
-  const [updateUserPhoneMutation] = useMutation(UPDATE_USER_PHONE);
+  const [updateUserPhoneMutation] = useMutation(UPDATE_USER_PHONE, {
+    errorPolicy: 'none',
+  });
 
   // Load auth data from localStorage on mount
   useEffect(() => {

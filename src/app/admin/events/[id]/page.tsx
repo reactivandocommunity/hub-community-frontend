@@ -22,9 +22,11 @@ export default function EditEventPage() {
     data,
     loading: queryLoading,
     error,
+    refetch,
   } = useQuery<EventResponse>(GET_EVENT_BY_SLUG_OR_ID, {
     variables: { slugOrId: id },
     skip: !id,
+    fetchPolicy: 'network-only',
   });
 
   const [updateEvent, { loading: mutationLoading }] =
@@ -87,7 +89,7 @@ export default function EditEventPage() {
       });
 
       // Save products & batches via the separate updateEventSale mutation
-      if (formData.products && formData.products.length > 0) {
+      if (formData.products) {
         try {
           await updateEventSale({
             variables: {
@@ -95,11 +97,11 @@ export default function EditEventPage() {
               data: {
                 max_slots: Number(formData.max_slots) || 0,
                 products: formData.products.map((p: any) => ({
-                  id: p.id || undefined,
+                  id: (p.id && p.id.toString().startsWith('new-')) ? undefined : p.id || undefined,
                   name: p.name,
                   enabled: p.enabled !== false,
                   batches: (p.batches || []).map((b: any) => ({
-                    id: b.id || undefined,
+                    id: (b.id && b.id.toString().startsWith('new-')) ? undefined : b.id || undefined,
                     batch_number: Number(b.batch_number) || 1,
                     value: Number(b.value) || 0,
                     max_quantity: Number(b.max_quantity) || 0,
@@ -126,6 +128,9 @@ export default function EditEventPage() {
         title: 'Evento atualizado',
         description: 'O evento foi atualizado com sucesso.',
       });
+
+      // Refetch queries so initial data updates immediately
+      await refetch();
 
       return responseData?.updateEvent?.id || eventId;
     } catch (error) {

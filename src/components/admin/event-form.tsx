@@ -6,6 +6,17 @@ import { LocationFormDialog } from '@/components/admin/location-form-dialog';
 import { ProductFormDialog } from '@/components/admin/product-form-dialog';
 import { TalkFormDialog } from '@/components/admin/talk-form-dialog';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Combobox } from '@/components/ui/combobox';
 import {
   Form,
@@ -155,6 +166,13 @@ export function EventForm({
     initialData?.products || []
   );
 
+  useEffect(() => {
+    if (initialData?.products) {
+      setProducts(initialData.products);
+      form.setValue('products', initialData.products);
+    }
+  }, [initialData?.products]);
+
   // Image Upload State
   const [coverImagePreview, setCoverImagePreview] = useState<string | null>(
     (initialData as any)?.coverImage || null
@@ -229,6 +247,29 @@ export function EventForm({
 
   const isOnline = form.watch('is_online');
 
+  // Tabs state synced with URL hash
+  const [activeTab, setActiveTab] = useState<string>('general');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (['general', 'schedule', 'products'].includes(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    
+    // Check initial hash
+    handleHashChange();
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    window.location.hash = value;
+  };
+
   const generateSlug = () => {
     const title = form.getValues('title');
     const slug = title
@@ -288,10 +329,12 @@ export function EventForm({
 
   // Product Handlers
   const handleAddProduct = (newProduct: any) => {
-    const prod = { ...newProduct, id: newProduct.id || `prod-${Date.now()}` };
-    const updatedProducts = [...products, prod];
-    setProducts(updatedProducts);
-    form.setValue('products', updatedProducts);
+    setProducts(prev => {
+      const prod = { ...newProduct, id: newProduct.id || `prod-${Date.now()}` };
+      const updatedProducts = [...prev, prod];
+      form.setValue('products', updatedProducts);
+      return updatedProducts;
+    });
   };
 
   const handleSaveEventForTalk = async (): Promise<string | undefined> => {
@@ -336,7 +379,7 @@ export function EventForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
-        <Tabs defaultValue="general" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general">Geral</TabsTrigger>
             <TabsTrigger value="schedule">Programação</TabsTrigger>
@@ -841,11 +884,13 @@ export function EventForm({
                         <div className="flex items-center gap-2">
                           <ProductFormDialog
                             onSave={updatedProduct => {
-                              const newProducts = products.map(p =>
-                                (p.id || p.name) === (product.id || product.name) ? updatedProduct : p
-                              );
-                              setProducts(newProducts);
-                              form.setValue('products', newProducts);
+                              setProducts(prev => {
+                                const newProducts = prev.map(p =>
+                                  (p.id || p.name) === (product.id || product.name) ? updatedProduct : p
+                                );
+                                form.setValue('products', newProducts);
+                                return newProducts;
+                              });
                             }}
                             initialData={product}
                             trigger={
@@ -854,21 +899,54 @@ export function EventForm({
                               </Button>
                             }
                           />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => {
-                              const updated = products.filter(
-                                p => (p.id || p.name) !== (product.id || product.name)
-                              );
-                              setProducts(updated);
-                              form.setValue('products', updated);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir o produto "{product.name}"? Esta ação removerá o produto e seus lotes do evento imediatamente. (Inscritos existentes não perderão o acesso).
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={async () => {
+                                    let latestProducts: any[] = [];
+                                    setProducts(prev => {
+                                      const updated = prev.filter(
+                                        p => (p.id || p.name) !== (product.id || product.name)
+                                      );
+                                      form.setValue('products', updated);
+                                      latestProducts = updated;
+                                      return updated;
+                                    });
+                                    
+                                    // Trigger form save immediately by explicit payload construction
+                                    setTimeout(async () => {
+                                      const currentValues = form.getValues();
+                                      await onSubmit({
+                                        ...currentValues,
+                                        products: latestProducts
+                                      });
+                                    }, 0);
+                                  }}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
 

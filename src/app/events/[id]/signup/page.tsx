@@ -1,5 +1,6 @@
 'use client';
 
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useLazyQuery } from '@apollo/client';
 import {
   ArrowLeft,
@@ -8,6 +9,7 @@ import {
   Clock,
   CreditCard,
   Loader2,
+  Mail,
   MapPin,
   Phone,
   QrCode,
@@ -15,18 +17,30 @@ import {
   Ticket,
   Copy,
   ExternalLink,
+  UserPlus,
   Video,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 import { AddToCalendarButton } from '@/components/add-to-calendar-button';
 import { FadeIn } from '@/components/animations';
 import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/auth-context';
+import { useTracking } from '@/hooks/use-tracking';
 import {
   GET_EVENT_BY_SLUG_OR_ID,
   SIGNUP_TO_EVENT,
@@ -34,6 +48,34 @@ import {
   IS_USER_SIGNED_UP,
 } from '@/lib/queries';
 import { adjustToBrazilTimezone } from '@/utils/event';
+
+const phoneRegex = /^\+?[\d\s()-]{8,20}$/;
+
+const inlineSignupSchema = z.object({
+  name: z.string().min(3, 'Nome completo deve ter no mínimo 3 caracteres.'),
+  email: z.string().email('Email inválido.'),
+  phone: z.string().regex(phoneRegex, 'Informe um número válido (ex: +55 11 98765-4321).'),
+  password: z.string().min(6, 'A senha deve ter no mínimo 6 caracteres.'),
+});
+
+type InlineSignupValues = z.infer<typeof inlineSignupSchema>;
+
+function deriveUsername(email: string): string {
+  const local = email
+    .split('@')[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 20) || 'user';
+  const suffix = Math.random().toString(36).slice(2, 6);
+  return `${local}-${suffix}`;
+}
+
+function isDuplicateEmailError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err || '')).toLowerCase();
+  return msg.includes('email') && (msg.includes('taken') || msg.includes('already') || msg.includes('exists'));
+}
 
 interface Batch {
   id: string;
@@ -56,7 +98,8 @@ type SignupStep = 'select' | 'confirm' | 'processing' | 'success' | 'payment';
 export default function EventSignupPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, isAuthenticated, updatePhone } = useAuth();
+  const { user, isAuthenticated, signUp: authSignUp, updatePhone } = useAuth();
+  const { track } = useTracking();
   const slugOrId = params.id as string;
 
   // State
@@ -72,6 +115,15 @@ export default function EventSignupPage() {
   const [copied, setCopied] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [isNewAccount, setIsNewAccount] = useState(false);
+  const [duplicateEmailEmail, setDuplicateEmailEmail] = useState<string | null>(null);
+  const [inlineBusy, setInlineBusy] = useState(false);
+
+  // Inline signup form (for unauthenticated users)
+  const inlineForm = useForm<InlineSignupValues>({
+    resolver: zodResolver(inlineSignupSchema),
+    defaultValues: { name: '', email: '', phone: '', password: '' },
+  });
 
   // Queries & Mutations
   const { data, loading } = useQuery(GET_EVENT_BY_SLUG_OR_ID, {
@@ -91,23 +143,43 @@ export default function EventSignupPage() {
   const isAlreadySignedUp = signupCheckData?.isUserSignedUp?.is_signed_up;
   const callLink = signupCheckData?.isUserSignedUp?.call_link;
 
-  // Redirect to login if not authenticated
+  // Raw products with enabled batches
+  const allAvailableProducts: Product[] = useMemo(
+    () =>
+      (event?.products || []).filter(
+        (p: Product) => p.enabled && p.batches?.some((b: Batch) => b.enabled)
+      ),
+    [event?.products]
+  );
+
+  // For unauthenticated users, v1 scope is free batches only.
+  // Paid batches require the existing login-redirect flow because an
+  // unconfirmed account + pending PIX payment is an ambiguous state we
+  // haven't designed for yet.
+  const availableProducts: Product[] = useMemo(() => {
+    if (isAuthenticated) return allAvailableProducts;
+    return allAvailableProducts
+      .map((p) => ({
+        ...p,
+        batches: p.batches.filter((b) => b.enabled && b.value === 0),
+      }))
+      .filter((p) => p.batches.length > 0);
+  }, [allAvailableProducts, isAuthenticated]);
+
+  // If the event has no free batches and the user is not authenticated, the
+  // inline flow can't help them — fall back to the original login redirect.
+  const onlyPaidForGuest =
+    !loading &&
+    !isAuthenticated &&
+    allAvailableProducts.length > 0 &&
+    availableProducts.length === 0;
+
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (onlyPaidForGuest) {
       const currentPath = `/events/${slugOrId}/signup`;
       router.push(`/?login=true&redirect=${encodeURIComponent(currentPath)}`);
     }
-  }, [isAuthenticated, loading, router, slugOrId]);
-
-  // Get available products with enabled batches
-  const availableProducts: Product[] = (event?.products || []).filter(
-    (p: Product) => p.enabled && p.batches?.some((b: Batch) => b.enabled)
-  );
-
-  // Get all available batches flattened
-  const allAvailableBatches = availableProducts.flatMap((p) =>
-    p.batches.filter((b) => b.enabled)
-  );
+  }, [onlyPaidForGuest, router, slugOrId]);
 
   // Auto-select when there's only one product with one batch
   useEffect(() => {
@@ -148,7 +220,7 @@ export default function EventSignupPage() {
     }
   };
 
-  // Handle signup
+  // Handle signup (authenticated path)
   const handleSignup = async () => {
     if (!user || !selectedBatch) return;
 
@@ -199,6 +271,11 @@ export default function EventSignupPage() {
 
       if (result?.success) {
         setSignupResult(result);
+        track({
+          eventType: 'signup_complete',
+          eventDocumentId: event?.documentId,
+          metadata: { route: `/events/${slugOrId}/signup`, isNewAccount: false },
+        });
         if (finalPrice === 0) {
           setStep('success');
         } else {
@@ -211,6 +288,89 @@ export default function EventSignupPage() {
     } catch (err: any) {
       setErrorMessage(err.message || 'Erro ao realizar inscrição.');
       setStep('confirm');
+    }
+  };
+
+  // Handle inline signup + event registration (guest path)
+  const handleInlineSignup = async (values: InlineSignupValues) => {
+    if (!selectedBatch || inlineBusy) return;
+
+    // Client-side dedupe: (eventId, email) short lock to avoid double-submit
+    // on page reload / flaky networks. Backend has no unique index on
+    // (event, email) for participants, so this is our guard.
+    const lockKey = `signup_lock_${slugOrId}_${values.email.toLowerCase()}`;
+    if (typeof sessionStorage !== 'undefined') {
+      const existing = sessionStorage.getItem(lockKey);
+      if (existing && Date.now() - Number(existing) < 30_000) {
+        setErrorMessage('Inscrição em andamento. Aguarde alguns segundos antes de tentar novamente.');
+        setStep('confirm');
+        return;
+      }
+      sessionStorage.setItem(lockKey, String(Date.now()));
+    }
+
+    setInlineBusy(true);
+    setStep('processing');
+    setErrorMessage('');
+    setDuplicateEmailEmail(null);
+
+    const username = deriveUsername(values.email);
+    const cleanedPhone = values.phone.replace(/[^\d+\s()-]/g, '');
+
+    try {
+      // Step 1: create the account. JWT is intentionally not issued by the
+      // BFF (email must be confirmed first) — that's fine, we don't need it
+      // because signupToEvent below is unauthenticated.
+      try {
+        await authSignUp({
+          name: values.name,
+          email: values.email,
+          password: values.password,
+          username,
+          phone: cleanedPhone,
+        });
+      } catch (err) {
+        if (isDuplicateEmailError(err)) {
+          setDuplicateEmailEmail(values.email);
+          setStep('confirm');
+          return;
+        }
+        throw err;
+      }
+
+      // Step 2: register them for the event
+      const variables: any = {
+        eventId: slugOrId,
+        name: values.name,
+        email: values.email,
+        batch_id: selectedBatch.id,
+        phone_number: cleanedPhone || undefined,
+      };
+      if (couponCode && couponDiscount) {
+        variables.coupon_code = couponCode;
+      }
+
+      const { data: mutData } = await signupToEvent({ variables });
+      const result = mutData?.signupToEvent;
+
+      if (result?.success) {
+        setSignupResult(result);
+        setIsNewAccount(true);
+        track({
+          eventType: 'signup_complete',
+          eventDocumentId: event?.documentId,
+          metadata: { route: `/events/${slugOrId}/signup`, isNewAccount: true },
+        });
+        setStep('success');
+      } else {
+        setErrorMessage(result?.message || 'Erro ao realizar inscrição.');
+        setStep('confirm');
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Erro ao realizar inscrição.');
+      setStep('confirm');
+    } finally {
+      setInlineBusy(false);
     }
   };
 
@@ -254,7 +414,10 @@ export default function EventSignupPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  // If the event only has paid batches and the user isn't logged in, we
+  // already kicked off a redirect in a useEffect above — show a spinner
+  // while the navigation completes rather than flashing inline UI.
+  if (onlyPaidForGuest) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -397,15 +560,38 @@ export default function EventSignupPage() {
 
             {/* User info strip */}
             <div className="px-6 py-4 border-t border-border/50 bg-card/50 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Inscrevendo como</p>
-                <p className="font-medium text-foreground">{user?.email}</p>
-              </div>
-              <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                <span className="text-primary font-bold text-lg">
-                  {(user?.username || user?.email || '?')[0].toUpperCase()}
-                </span>
-              </div>
+              {isAuthenticated ? (
+                <>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Inscrevendo como</p>
+                    <p className="font-medium text-foreground">{user?.email}</p>
+                  </div>
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-primary font-bold text-lg">
+                      {(user?.username || user?.email || '?')[0].toUpperCase()}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Novo por aqui?</p>
+                    <p className="font-medium text-foreground">
+                      Preencha seus dados abaixo para se inscrever.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentPath = `/events/${slugOrId}/signup`;
+                      router.push(`/?login=true&redirect=${encodeURIComponent(currentPath)}`);
+                    }}
+                    className="text-sm text-primary hover:underline font-medium"
+                  >
+                    Já tenho conta
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -556,8 +742,9 @@ export default function EventSignupPage() {
                         </div>
                       </div>
 
-                      {/* Phone input — only if user has no phone */}
-                      {!user?.phone && (
+                      {/* Phone input — only for authenticated users without a phone on file.
+                          Guests collect their phone on the inline signup form in the confirm step. */}
+                      {isAuthenticated && !user?.phone && (
                         <div className="mt-6 p-4 bg-amber-500/5 border border-amber-500/30 rounded-xl space-y-3">
                           <div className="flex items-center gap-2">
                             <Phone className="h-4 w-4 text-amber-600" />
@@ -586,7 +773,7 @@ export default function EventSignupPage() {
                         className="w-full mt-6 rounded-full"
                         size="lg"
                         onClick={() => setStep('confirm')}
-                        disabled={!user?.phone && !phoneInput.trim()}
+                        disabled={isAuthenticated && !user?.phone && !phoneInput.trim()}
                       >
                         {finalPrice === 0 ? 'Confirmar Inscrição' : 'Continuar para pagamento'}
                       </Button>
@@ -597,8 +784,8 @@ export default function EventSignupPage() {
             </div>
           )}
 
-          {/* Step: Confirm */}
-          {step === 'confirm' && (
+          {/* Step: Confirm (authenticated user) */}
+          {step === 'confirm' && isAuthenticated && (
             <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
               <h2 className="text-lg font-semibold text-foreground">Confirmar Inscrição</h2>
 
@@ -676,6 +863,173 @@ export default function EventSignupPage() {
             </div>
           )}
 
+          {/* Step: Confirm (guest — inline signup form) */}
+          {step === 'confirm' && !isAuthenticated && (
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+              <div className="flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-primary" />
+                <h2 className="text-lg font-semibold text-foreground">Seus dados</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Preencha abaixo para criar sua conta e confirmar sua inscrição em{' '}
+                <strong>{event.title}</strong>.
+              </p>
+
+              {duplicateEmailEmail && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 text-sm space-y-3">
+                  <p className="text-foreground">
+                    O email <strong>{duplicateEmailEmail}</strong> já tem cadastro. Se você já
+                    confirmou sua conta, faça login para se inscrever. Caso contrário, verifique
+                    sua caixa de entrada — enviamos um link de confirmação.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => {
+                      const currentPath = `/events/${slugOrId}/signup`;
+                      router.push(`/?login=true&redirect=${encodeURIComponent(currentPath)}`);
+                    }}
+                  >
+                    Fazer login
+                  </Button>
+                </div>
+              )}
+
+              <Form {...inlineForm}>
+                <form onSubmit={inlineForm.handleSubmit(handleInlineSignup)} className="space-y-4">
+                  <FormField
+                    control={inlineForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nome completo</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="João da Silva"
+                            autoComplete="name"
+                            disabled={inlineBusy}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={inlineForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="joao@exemplo.com"
+                            autoComplete="email"
+                            disabled={inlineBusy}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={inlineForm.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>WhatsApp</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder="+55 11 98765-4321"
+                            autoComplete="tel"
+                            maxLength={20}
+                            disabled={inlineBusy}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={inlineForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Senha</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            placeholder="Mínimo 6 caracteres"
+                            autoComplete="new-password"
+                            disabled={inlineBusy}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="bg-muted/30 rounded-xl p-4 space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        {selectedProduct?.name} — {selectedBatch?.batch_number}º Lote
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {finalPrice === 0 ? 'Grátis' : `R$ ${(finalPrice / 100).toFixed(2)}`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {errorMessage && (
+                    <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-600 text-sm">
+                      {errorMessage}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 rounded-full"
+                      onClick={() => {
+                        setStep('select');
+                        setErrorMessage('');
+                        setDuplicateEmailEmail(null);
+                      }}
+                      disabled={inlineBusy}
+                    >
+                      Voltar
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1 rounded-full"
+                      size="lg"
+                      disabled={inlineBusy || signingUp}
+                    >
+                      {inlineBusy || signingUp ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        'Criar conta e inscrever-se'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          )}
+
           {/* Step: Processing */}
           {step === 'processing' && (
             <div className="bg-card border border-border rounded-2xl p-12 text-center">
@@ -701,6 +1055,20 @@ export default function EventSignupPage() {
                   Sua inscrição no evento <strong>{event.title}</strong> foi realizada com sucesso.
                 </p>
               </div>
+
+              {isNewAccount && (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-left">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Mail className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">Confirme seu email</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Enviamos um link para{' '}
+                    <strong>{inlineForm.getValues('email')}</strong> para você confirmar sua
+                    conta e acessar os detalhes do evento. Verifique também sua caixa de spam.
+                  </p>
+                </div>
+              )}
 
               {event.is_online && (
                 <div className="bg-primary/5 border border-primary/20 rounded-xl p-6">

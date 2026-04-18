@@ -235,7 +235,7 @@ export default function EventAnalyticsPage() {
         fetchPolicy: 'network-only',
       });
 
-      const signups: SignupEntry[] = freshData?.eventAnalytics?.recent_signups || [];
+      const signups: SignupEntry[] = freshData?.eventAnalytics?.all_signups || [];
 
       if (signups.length === 0) {
         alert('Nenhum participante encontrado.');

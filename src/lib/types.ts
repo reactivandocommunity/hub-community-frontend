@@ -543,7 +543,7 @@ export interface EventAnalytics {
   certificate_requests: number;
   products_breakdown: ProductAnalytics[];
   signups_timeline: TimelineDataPoint[];
-  recent_signups: SignupEntry[];
+  all_signups: SignupEntry[];
 }
 
 export interface EventAnalyticsResponse {

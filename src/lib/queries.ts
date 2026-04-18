@@ -715,7 +715,7 @@ export const GET_EVENT_ANALYTICS = gql`
         date
         count
       }
-      recent_signups {
+      all_signups {
         name
         email
         phone_number

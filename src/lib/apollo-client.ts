@@ -72,8 +72,10 @@ function createApolloClient() {
   let link = httpChain;
 
   if (typeof window !== 'undefined') {
-    // Convert HTTP URL to WS URL for subscriptions
-    const wsUrl = httpUrl.replace(/^http/, 'ws');
+    // Convert HTTP URL to WS URL — BFF WS server listens on path '/'
+    const wsUrl = httpUrl
+      .replace(/^http/, 'ws')
+      .replace(/\/graphql$/, '');
 
     // Lazy WS link — only creates connection when a subscription is used
     const wsLink = new GraphQLWsLink(

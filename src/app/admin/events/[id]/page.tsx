@@ -10,7 +10,7 @@ import { useMutation, useQuery } from '@apollo/client';
 import { format } from 'date-fns';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Award, BarChart3, FileSpreadsheet } from 'lucide-react';
+import { Award, BarChart3, FileSpreadsheet, QrCode, Printer } from 'lucide-react';
 
 export default function EditEventPage() {
   const router = useRouter();
@@ -34,6 +34,7 @@ export default function EditEventPage() {
   const [updateEventSale] =
     useMutation<UpdateEventSaleResponse>(UPDATE_EVENT_SALE);
   const [initialData, setInitialData] = useState<any>(null);
+  const eventSlug = data?.eventBySlugOrId?.slug || id;
 
   useEffect(() => {
     if (data?.eventBySlugOrId) {
@@ -208,7 +209,21 @@ export default function EditEventPage() {
             onClick={() => router.push(`/admin/events/${id}/import-signups`)}
           >
             <FileSpreadsheet className="w-4 h-4 mr-2" />
-            Importar Inscrições
+            Inscrições
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.open(`/checkin/${eventSlug}`, '_blank')}
+          >
+            <QrCode className="w-4 h-4 mr-2" />
+            Check-in
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.open(`/badge-printer/live/${eventSlug}`, '_blank')}
+          >
+            <Printer className="w-4 h-4 mr-2" />
+            Crachá
           </Button>
         </div>
       </div>

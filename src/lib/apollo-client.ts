@@ -73,10 +73,9 @@ function createApolloClient() {
 
   if (typeof window !== 'undefined') {
     // Convert HTTP URL to WS URL for subscriptions
-    const wsUrl = httpUrl
-      .replace(/^http/, 'ws')
-      .replace(/\/graphql$/, '');
+    const wsUrl = httpUrl.replace(/^http/, 'ws');
 
+    // Lazy WS link — only creates connection when a subscription is used
     const wsLink = new GraphQLWsLink(
       createClient({
         url: wsUrl,
@@ -86,9 +85,15 @@ function createApolloClient() {
             authorization: token ? `Bearer ${token}` : '',
           };
         },
-        // Auto-reconnect on connection loss
-        retryAttempts: Infinity,
+        // Retry reconnections with backoff, not infinite
+        retryAttempts: 5,
         shouldRetry: () => true,
+        lazy: true,
+        on: {
+          error: () => {
+            // Silently handle WS errors — subscriptions will degrade gracefully
+          },
+        },
       })
     );
 

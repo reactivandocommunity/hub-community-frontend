@@ -22,46 +22,34 @@ export function buildBadgeHtml(data: BadgePrintData): string {
   const link = data.link ? escapeHtml(data.link) : '';
   const qrDataUrl = data.qrDataUrl;
 
-  // @page is declared as 50x100mm portrait (not the physical 100x50mm landscape)
-  // because Chrome's --kiosk-printing dispatches in portrait by default and ignores
-  // the OS printer driver's landscape default. The .badge-container is rotated -90°
-  // to be visually landscape inside the portrait page; the printer then rotates the
-  // whole page 90° to fit the landscape label, producing upright content.
-  // If the printed label comes out upside-down, swap rotate(-90deg) for rotate(90deg)
-  // and translate(50mm, 0) for translate(0, 100mm).
+  // PPD modified to include w4h2 (4in x 2in = 288x144pt) matching the physical label.
+  // Set via: lpoptions -p _4BARCODE_4B_2074A -o PageSize=w4h2
   return `<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8">
     <title>Crachá - ${fullName}</title>
     <style>
-      @page { size: 50mm 100mm; margin: 0; }
+      @page { size: 4in 2in; margin: 0; }
       html, body {
         margin: 0 !important;
         padding: 0 !important;
-        width: 50mm !important;
-        height: 100mm !important;
+        width: 4in !important;
+        height: 2in !important;
         overflow: hidden !important;
         background: white;
         font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       }
       .badge-container {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100mm;
-        height: 50mm;
-        padding: 4mm 5mm;
-        transform: translate(0, 100mm) rotate(-90deg);
-        transform-origin: top left;
+        width: 4in;
+        height: 2in;
+        padding: 3mm 4mm;
         display: flex;
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
         box-sizing: border-box;
         overflow: hidden;
-        page-break-inside: avoid;
-        break-inside: avoid;
       }
       .info-section {
         display: flex;

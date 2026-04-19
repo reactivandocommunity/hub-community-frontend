@@ -166,84 +166,123 @@ npm run format       # Format code with Prettier
 npm run format:check # Check code formatting
 ```
 
-## 🖨️ Badge Printer Kiosk Mode
+## 🖨️ Badge Printer — Configuração de Kiosk
 
-The `/badge-printer` and `/badge-printer/csv` pages can be used in Chrome's
-kiosk-printing mode so badges go straight to the printer with no print dialog.
-Tested with the **Tomate 2074A** thermal label printer (100mm × 50mm landscape).
+A página `/badge-printer` permite gerar e imprimir crachás (100mm × 50mm) diretamente
+em uma impressora térmica de etiquetas. Usando o modo **kiosk-printing** do Chrome,
+a impressão é enviada direto para a impressora sem diálogo de impressão.
 
-Setup is required in this exact order — step 2 is what stops two labels from
-feeding per print under kiosk mode (where the print dialog can't be opened to
-fix orientation manually).
+Testado com a impressora **4BARCODE 4B-2074A (Tomate 2074A)**.
 
-### 1. Set the Tomate 2074A as the macOS default printer
+### Pré-requisitos
 
-`--kiosk-printing` always uses the OS default printer; without this, prints
-silently go to the wrong device. Set it in **System Settings → Printers &
-Scanners → Default printer**.
+- macOS com CUPS (pré-instalado)
+- Impressora 4BARCODE 4B-2074A instalada e configurada
+- Google Chrome
+- Etiquetas 100mm × 50mm (4in × 2in)
 
-### 2. Configure the driver for 100mm × 50mm landscape
+### 1. Definir a impressora como padrão do macOS
 
-- **System Settings → Printers & Scanners → Tomate 2074A → Options & Supplies**.
-- Create a custom paper size: width **100mm × height 50mm**. Name it
-  `Crachá 100x50`.
-- Set **default orientation to Landscape**.
-- Set this preset as the printer's default.
-- From any app, do *File → Print* → expand dialog → confirm orientation
-  defaults to landscape with no manual change.
+`--kiosk-printing` sempre usa a impressora padrão do sistema.
 
-**Why this matters**: Chrome's `@page { size: 100mm 50mm }` declares
-dimensions, but Chrome takes orientation from the driver. A portrait-default
-driver causes the 100mm-wide layout to overflow onto a second page; a
-landscape-default driver lets Chrome honor the dimensions and produces exactly
-one label.
+**System Settings → Printers & Scanners → Default printer** → selecione a 4BARCODE.
 
-### 3. Launch Chrome in kiosk-printing mode
+### 2. Adicionar tamanho de papel `w4h2` ao PPD
+
+O PPD padrão da impressora **não inclui** um tamanho de papel que corresponda à etiqueta
+100mm × 50mm. Sem essa configuração, o Chrome usa papéis maiores (como `w2h4` ou `w4h6`)
+e consome múltiplas etiquetas por impressão.
+
+Execute este comando para adicionar o tamanho `w4h2` (4in × 2in = 288pt × 144pt):
 
 ```bash
-pnpm print:kiosk:mac     # macOS
-pnpm print:kiosk:linux   # Linux
-pnpm print:kiosk:win     # Windows
+sudo sed -i.bak \
+  -e 's/^\*DefaultPageSize: w4h6/*DefaultPageSize: w4h2/' \
+  -e '/^\*PageSize w2h4/i\
+*PageSize w4h2/4 x 2 (4.00 in x 2.00 in): "<<\/PageSize[288 144]\/ImagingBBox null>>setpagedevice"' \
+  -e 's/^\*DefaultPageRegion: w4h6/*DefaultPageRegion: w4h2/' \
+  -e '/^\*PageRegion w2h4/i\
+*PageRegion w4h2/4 x 2 (4.00 in x 2.00 in): "<<\/PageSize[288 144]\/ImagingBBox null>>setpagedevice"' \
+  -e '/^\*ImageableArea w2h4/i\
+*ImageableArea w4h2/4 x 2 (4.00 in x 2.00 in): "0 0 288 144"' \
+  -e '/^\*PaperDimension w2h4/i\
+*PaperDimension w4h2/4 x 2 (4.00 in x 2.00 in): "288 144"' \
+  /etc/cups/ppd/_4BARCODE_4B_2074A.ppd
 ```
 
-Each script uses a dedicated `--user-data-dir` so the flag isn't ignored when
-a normal Chrome window is already open. Adjust the URL inside `package.json`
-if you're not running locally on `:4010`.
+> **Nota:** O nome do arquivo PPD pode variar. Verifique com:
+> `ls /etc/cups/ppd/ | grep -i barcode`
 
-### 4. Print one test badge before each event
+### 3. Configurar o papel padrão e reiniciar o CUPS
 
-There is no JavaScript API to verify the right printer or orientation is in
-effect — a real print is the only check. If two labels feed, return to
-step 2.
+```bash
+# Define w4h2 como padrão a nível de sistema
+sudo lpadmin -p _4BARCODE_4B_2074A -o PageSize=w4h2
 
-### Why `@page` is declared as portrait, not landscape
+# Reinicia o serviço CUPS para carregar o PPD atualizado
+sudo launchctl stop org.cups.cupsd && sudo launchctl start org.cups.cupsd
 
-`src/lib/badge-print.ts` declares `@page { size: 50mm 100mm; margin: 0; }`
-(portrait) and rotates the badge `-90deg` via CSS transform. This looks
-backwards but is intentional: Chrome's `--kiosk-printing` dispatches in
-portrait by default and **ignores the OS printer driver's landscape default**
-(it bypasses the print preview that normally reads driver settings). Telling
-Chrome the page is portrait + rotating content compensates: the printer then
-rotates the page 90° to fit the landscape label, and the visual badge ends up
-upright.
+# Define w4h2 como padrão a nível de usuário
+lpoptions -p _4BARCODE_4B_2074A -o PageSize=w4h2
+sudo lpoptions -p _4BARCODE_4B_2074A -o PageSize=w4h2
+```
 
-In normal (non-kiosk) Chrome the print preview will look "tall" — that's
-expected. The physical print is correct.
+Verificar se a configuração foi aplicada:
+
+```bash
+lpoptions -p _4BARCODE_4B_2074A | grep -o 'PageSize=[^ ]*'
+# Deve exibir: PageSize=w4h2
+```
+
+### 4. Iniciar o Chrome em modo kiosk-printing
+
+```bash
+sudo /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --kiosk-printing http://localhost:3000/badge-printer
+```
+
+> **Por que `sudo`?** O Chrome com `--kiosk-printing` precisa de permissões elevadas
+> para acessar as configurações de impressora a nível de sistema (definidas via `lpadmin`).
+
+### 5. Imprimir um crachá de teste
+
+Após preencher o formulário e clicar em **Imprimir**, o crachá deve sair em
+**uma única etiqueta**, na orientação horizontal (landscape), sem diálogo de impressão.
+
+### Como funciona (detalhes técnicos)
+
+O CSS de impressão em `src/lib/badge-print.ts` usa:
+
+```css
+@page { size: 4in 2in; margin: 0; }
+```
+
+Isso bate exatamente com o tamanho de papel `w4h2` no PPD (288pt × 144pt), que por sua
+vez bate com a etiqueta física de 100mm × 50mm. O Chrome encontra o match direto no
+driver da impressora e envia o conteúdo sem rotação.
+
+O badge é renderizado via um `<iframe>` invisível com `srcdoc`, que chama `window.print()`
+automaticamente. No modo kiosk, o Chrome pula o diálogo e envia direto.
 
 ### Troubleshooting
 
-- **Print dialog still appears**: kill any Chrome process using
-  `/tmp/badge-kiosk-chrome` and relaunch. The flag is silently ignored when
-  the user-data-dir is already in use.
-- **Badge prints upside-down on the label**: rotation direction is wrong for
-  your printer's feed direction. In `src/lib/badge-print.ts`'s
-  `buildBadgeHtml`, swap `transform: translate(0, 100mm) rotate(-90deg)`
-  for `transform: translate(50mm, 0) rotate(90deg)`.
-- **Wrong printer prints**: Tomate isn't the OS default. Re-do step 1.
-- **Content cut off**: the printer driver's custom paper size doesn't accept
-  50mm × 100mm portrait. Add it as a second custom size in the driver, or
-  edit `@page` in `src/lib/badge-print.ts` to use whatever portrait
-  dimensions your driver allows.
+| Problema | Causa | Solução |
+|---|---|---|
+| Consome 2 etiquetas | PPD sem tamanho `w4h2` | Refaça o passo 2 |
+| Imprime na vertical | CUPS não reiniciado | Reinicie CUPS (passo 3) |
+| Diálogo aparece | Chrome sem `--kiosk-printing` | Feche todas as janelas do Chrome e relance com a flag |
+| Impressora errada | Não é a padrão do macOS | Refaça o passo 1 |
+| Conteúdo cortado | Papel não configurado | Verifique com `lpoptions -p _4BARCODE_4B_2074A \| grep PageSize` |
+| De cabeça pra baixo | Feed direction da impressora | Adicione `transform: rotate(180deg)` ao `.badge-container` em `badge-print.ts` |
+
+### Restaurar PPD original
+
+Se precisar reverter a modificação do PPD:
+
+```bash
+sudo cp /etc/cups/ppd/_4BARCODE_4B_2074A.ppd.bak /etc/cups/ppd/_4BARCODE_4B_2074A.ppd
+sudo launchctl stop org.cups.cupsd && sudo launchctl start org.cups.cupsd
+```
 
 ## 🌐 Environment Variables
 

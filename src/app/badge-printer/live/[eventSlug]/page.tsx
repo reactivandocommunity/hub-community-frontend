@@ -1,0 +1,430 @@
+'use client';
+
+import { useQuery, useSubscription } from '@apollo/client';
+import {
+  Check,
+  Loader2,
+  Monitor,
+  Printer,
+  QrCode,
+  Wifi,
+  WifiOff,
+  Users,
+  Settings,
+} from 'lucide-react';
+import { useParams } from 'next/navigation';
+import { QRCodeCanvas } from 'qrcode.react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { FadeIn } from '@/components/animations';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { printBadge } from '@/lib/badge-print';
+import {
+  CREDENTIAL_CHECKED_IN,
+  EVENT_SIGNUPS,
+} from '@/lib/queries';
+import {
+  CredentialCheckedInData,
+  EventSignup,
+  EventSignupsResponse,
+} from '@/lib/types';
+
+interface PrintedBadge {
+  signup: EventSignup;
+  printedAt: Date;
+}
+
+export default function LiveBadgePrinterPage() {
+  const params = useParams();
+  const eventSlug = params?.eventSlug as string;
+
+  // Settings
+  const [eventName, setEventName] = useState('COMUNIDADE');
+  const [badgeLink, setBadgeLink] = useState('https://hubcommunity.io');
+  const [isAutoprint, setIsAutoprint] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // State
+  const [printedBadges, setPrintedBadges] = useState<PrintedBadge[]>([]);
+  const [printQueue, setPrintQueue] = useState<EventSignup[]>([]);
+  const [isPrinting, setIsPrinting] = useState(false);
+  const printQueueRef = useRef<EventSignup[]>([]);
+  const isPrintingRef = useRef(false);
+
+  // Hidden QR code canvas for badge printing
+  const qrCanvasRef = useRef<HTMLDivElement>(null);
+
+  // The public check-in URL for the QR code
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const checkinUrl = `${baseUrl}/checkin/${eventSlug}`;
+
+  // Fetch all signups to show stats
+  const { data: signupsData, refetch: refetchSignups } = useQuery<EventSignupsResponse>(
+    EVENT_SIGNUPS,
+    {
+      variables: { eventSlug },
+      skip: !eventSlug,
+      fetchPolicy: 'network-only',
+    }
+  );
+
+  // Subscribe to real-time check-ins
+  const { data: subscriptionData, error: subscriptionError } =
+    useSubscription<CredentialCheckedInData>(CREDENTIAL_CHECKED_IN, {
+      variables: { eventSlug },
+      skip: !eventSlug,
+    });
+
+  // Process new check-in from subscription
+  useEffect(() => {
+    if (!subscriptionData?.credentialCheckedIn) return;
+
+    const signup = subscriptionData.credentialCheckedIn;
+
+    // Avoid duplicates
+    if (printedBadges.some((pb) => pb.signup.id === signup.id)) return;
+
+    if (isAutoprint) {
+      // Add to print queue
+      setPrintQueue((prev) => [...prev, signup]);
+      printQueueRef.current = [...printQueueRef.current, signup];
+    }
+
+    // Refetch stats
+    refetchSignups();
+  }, [subscriptionData, isAutoprint, printedBadges, refetchSignups]);
+
+  // Process print queue
+  const processQueue = useCallback(async () => {
+    if (isPrintingRef.current) return;
+    if (printQueueRef.current.length === 0) return;
+
+    isPrintingRef.current = true;
+    setIsPrinting(true);
+
+    const signup = printQueueRef.current[0];
+    printQueueRef.current = printQueueRef.current.slice(1);
+    setPrintQueue(printQueueRef.current);
+
+    try {
+      // Get QR code data URL from hidden canvas
+      const canvas = qrCanvasRef.current?.querySelector('canvas');
+      const qrDataUrl = canvas ? canvas.toDataURL() : '';
+
+      await printBadge({
+        fullName: signup.name,
+        qrDataUrl,
+        logoText: eventName,
+        link: badgeLink,
+      });
+
+      setPrintedBadges((prev) => [
+        { signup, printedAt: new Date() },
+        ...prev,
+      ]);
+    } catch (err) {
+      console.error('Print error:', err);
+    } finally {
+      isPrintingRef.current = false;
+      setIsPrinting(false);
+
+      // Process next in queue
+      if (printQueueRef.current.length > 0) {
+        setTimeout(processQueue, 500);
+      }
+    }
+  }, [eventName, badgeLink]);
+
+  // Trigger queue processing when items are added
+  useEffect(() => {
+    if (printQueue.length > 0 && !isPrintingRef.current) {
+      processQueue();
+    }
+  }, [printQueue, processQueue]);
+
+  // Manual print
+  const handleManualPrint = useCallback(
+    async (signup: EventSignup) => {
+      const canvas = qrCanvasRef.current?.querySelector('canvas');
+      const qrDataUrl = canvas ? canvas.toDataURL() : '';
+
+      await printBadge({
+        fullName: signup.name,
+        qrDataUrl,
+        logoText: eventName,
+        link: badgeLink,
+      });
+
+      setPrintedBadges((prev) => {
+        if (prev.some((pb) => pb.signup.id === signup.id)) return prev;
+        return [{ signup, printedAt: new Date() }, ...prev];
+      });
+    },
+    [eventName, badgeLink]
+  );
+
+  // Stats
+  const totalSignups = signupsData?.eventSignups?.length || 0;
+  const checkedInCount =
+    signupsData?.eventSignups?.filter((s) => s.checked_in).length || 0;
+  const printedCount = printedBadges.length;
+  const isConnected = !subscriptionError;
+
+  return (
+    <main className="min-h-screen bg-background">
+      {/* Hidden QR for badge printing */}
+      <div ref={qrCanvasRef} className="hidden">
+        <QRCodeCanvas value={badgeLink} size={256} level="H" />
+      </div>
+
+      <FadeIn direction="up" duration={0.3}>
+        <div className="container mx-auto py-8 px-4 max-w-7xl space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                <Monitor className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+                  Estação de Credenciamento
+                </h1>
+                <div className="flex items-center gap-3 mt-1">
+                  <Badge
+                    variant={isConnected ? 'default' : 'destructive'}
+                    className={`gap-1.5 text-xs ${
+                      isConnected
+                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-200/50 dark:text-emerald-400 dark:border-emerald-800/50'
+                        : ''
+                    }`}
+                  >
+                    {isConnected ? (
+                      <Wifi className="w-3 h-3" />
+                    ) : (
+                      <WifiOff className="w-3 h-3" />
+                    )}
+                    {isConnected ? 'Conectado — Escutando check-ins' : 'Desconectado'}
+                  </Badge>
+                  {isPrinting && (
+                    <Badge className="gap-1.5 text-xs bg-blue-500/10 text-blue-600 border-blue-200/50 dark:text-blue-400 dark:border-blue-800/50">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Imprimindo...
+                    </Badge>
+                  )}
+                  {printQueue.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {printQueue.length} na fila
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowSettings(!showSettings)}
+              className="gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              Configurações
+            </Button>
+          </div>
+
+          {/* Settings Panel */}
+          {showSettings && (
+            <Card className="border-primary/20 bg-primary/[0.02]">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base">Configurações da Estação</CardTitle>
+                <CardDescription>
+                  Configure o texto do crachá e link do QR Code
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nome do Evento/Comunidade</Label>
+                    <Input
+                      value={eventName}
+                      onChange={(e) => setEventName(e.target.value)}
+                      placeholder="Ex: COMUNIDADE"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Link do QR Code (Crachá)</Label>
+                    <Input
+                      value={badgeLink}
+                      onChange={(e) => setBadgeLink(e.target.value)}
+                      placeholder="https://hubcommunity.io"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Impressão Automática</Label>
+                    <div className="flex items-center gap-3 h-10">
+                      <button
+                        onClick={() => setIsAutoprint(!isAutoprint)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full 
+                                    border-2 border-transparent transition-colors duration-200 ease-in-out
+                                    focus:outline-none ${
+                                      isAutoprint ? 'bg-primary' : 'bg-muted'
+                                    }`}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 
+                                      ease-in-out ${
+                                        isAutoprint ? 'translate-x-5' : 'translate-x-0'
+                                      }`}
+                        />
+                      </button>
+                      <span className="text-sm text-muted-foreground">
+                        {isAutoprint ? 'Ativada' : 'Desativada'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Main Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* QR Code Display */}
+            <Card className="lg:col-span-1">
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-base flex items-center justify-center gap-2">
+                  <QrCode className="w-4 h-4 text-primary" />
+                  QR Code — Check-in
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Participantes escaneiam para fazer check-in
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center gap-4 py-6">
+                <div className="bg-white p-6 rounded-2xl shadow-lg shadow-primary/5 border border-border/30">
+                  <QRCodeCanvas
+                    value={checkinUrl}
+                    size={220}
+                    level="H"
+                    marginSize={2}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground text-center break-all max-w-[280px]">
+                  {checkinUrl}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Stats + Printed Badges */}
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  Credenciamento
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {/* Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-muted/50 p-4 rounded-xl border border-border/50 text-center">
+                    <div className="text-3xl font-bold">{totalSignups}</div>
+                    <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mt-1">
+                      Inscritos
+                    </div>
+                  </div>
+                  <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20 text-center">
+                    <div className="text-3xl font-bold text-blue-700 dark:text-blue-400">
+                      {checkedInCount}
+                    </div>
+                    <div className="text-[10px] uppercase font-bold text-blue-600 dark:text-blue-400 tracking-wider mt-1">
+                      Check-ins
+                    </div>
+                  </div>
+                  <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20 text-center">
+                    <div className="text-3xl font-bold text-emerald-700 dark:text-emerald-400">
+                      {printedCount}
+                    </div>
+                    <div className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400 tracking-wider mt-1">
+                      Impressos
+                    </div>
+                  </div>
+                </div>
+
+                {/* Recently printed badges */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-3">
+                    Crachás Impressos Recentemente
+                  </h3>
+
+                  {printedBadges.length === 0 ? (
+                    <div className="text-center py-12 border-2 border-dashed rounded-xl">
+                      <Printer className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-sm text-muted-foreground">
+                        Aguardando check-ins...
+                      </p>
+                      <p className="text-xs text-muted-foreground/60 mt-1">
+                        Os crachás serão impressos automaticamente
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="max-h-[400px] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                      {printedBadges.map((pb, index) => (
+                        <div
+                          key={pb.signup.id}
+                          className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
+                            index === 0
+                              ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200/50 dark:border-emerald-800/30 animate-in fade-in slide-in-from-top-2'
+                              : 'bg-card border-border/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                              <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold">{pb.signup.name}</p>
+                              {pb.signup.product_name && (
+                                <p className="text-xs text-muted-foreground">
+                                  {pb.signup.product_name}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {pb.printedAt.toLocaleTimeString('pt-BR', {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleManualPrint(pb.signup)}
+                              title="Reimprimir"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </FadeIn>
+    </main>
+  );
+}

@@ -549,3 +549,33 @@ export interface EventAnalytics {
 export interface EventAnalyticsResponse {
   eventAnalytics: EventAnalytics;
 }
+
+// Checkin / Credentialing types
+export interface EventSignup {
+  id: string;
+  name: string;
+  email?: string;
+  phone_number?: string;
+  checked_in?: boolean;
+  checked_in_at?: string;
+  product_name?: string;
+}
+
+export interface CheckinResponse {
+  success: boolean;
+  message?: string;
+  signup?: EventSignup;
+}
+
+export interface EventSignupsResponse {
+  eventSignups: EventSignup[];
+}
+
+export interface CheckinSignupResponse {
+  checkinSignup: CheckinResponse;
+}
+
+export interface CredentialCheckedInData {
+  credentialCheckedIn: EventSignup;
+}
+

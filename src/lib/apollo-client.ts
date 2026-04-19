@@ -1,6 +1,9 @@
-import { ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { ApolloClient, InMemoryCache, createHttpLink, split } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
+import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
+import { getMainDefinition } from '@apollo/client/utilities';
+import { createClient } from 'graphql-ws';
 import { isTokenExpired } from './jwt';
 
 // Lazy initialization to avoid creating the client during server-side module evaluation
@@ -8,8 +11,10 @@ let client: ApolloClient<any> | null = null;
 
 function createApolloClient() {
   // Configuração da URL do BFF GraphQL
+  const httpUrl = process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql';
+
   const httpLink = createHttpLink({
-    uri: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'http://localhost:4000/graphql',
+    uri: httpUrl,
   });
 
   // Middleware para adicionar headers de autenticação
@@ -60,9 +65,50 @@ function createApolloClient() {
     }
   });
 
+  // Build the HTTP chain
+  const httpChain = errorLink.concat(authLink.concat(httpLink));
+
+  // Build the final link — with WS split on the client
+  let link = httpChain;
+
+  if (typeof window !== 'undefined') {
+    // Convert HTTP URL to WS URL for subscriptions
+    const wsUrl = httpUrl
+      .replace(/^http/, 'ws')
+      .replace(/\/graphql$/, '');
+
+    const wsLink = new GraphQLWsLink(
+      createClient({
+        url: wsUrl,
+        connectionParams: () => {
+          const token = localStorage.getItem('auth_token');
+          return {
+            authorization: token ? `Bearer ${token}` : '',
+          };
+        },
+        // Auto-reconnect on connection loss
+        retryAttempts: Infinity,
+        shouldRetry: () => true,
+      })
+    );
+
+    // Split: subscriptions go via WS, everything else via HTTP
+    link = split(
+      ({ query }) => {
+        const definition = getMainDefinition(query);
+        return (
+          definition.kind === 'OperationDefinition' &&
+          definition.operation === 'subscription'
+        );
+      },
+      wsLink,
+      httpChain
+    );
+  }
+
   // Criação do cliente Apollo
   return new ApolloClient({
-    link: errorLink.concat(authLink.concat(httpLink)),
+    link,
     cache: new InMemoryCache({
       typePolicies: {
         Query: {

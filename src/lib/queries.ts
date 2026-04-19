@@ -761,3 +761,51 @@ export const DELETE_COMMUNITY = gql`
     }
   }
 `;
+
+// Checkin / Credentialing
+export const EVENT_SIGNUPS = gql`
+  query EventSignups($eventSlug: String!, $search: String) {
+    eventSignups(eventSlug: $eventSlug, search: $search) {
+      id
+      name
+      email
+      phone_number
+      checked_in
+      checked_in_at
+      product_name
+    }
+  }
+`;
+
+export const CHECKIN_SIGNUP = gql`
+  mutation CheckinSignup($eventSlug: String!, $signupId: String!) {
+    checkinSignup(eventSlug: $eventSlug, signupId: $signupId) {
+      success
+      message
+      signup {
+        id
+        name
+        email
+        phone_number
+        checked_in
+        checked_in_at
+        product_name
+      }
+    }
+  }
+`;
+
+export const CREDENTIAL_CHECKED_IN = gql`
+  subscription CredentialCheckedIn($eventSlug: String!) {
+    credentialCheckedIn(eventSlug: $eventSlug) {
+      id
+      name
+      email
+      phone_number
+      checked_in
+      checked_in_at
+      product_name
+    }
+  }
+`;
+

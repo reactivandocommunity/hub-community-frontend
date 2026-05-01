@@ -321,21 +321,30 @@ export default function LiveBadgePrinterPage() {
                                 </p>
                               )}
                             </div>
-                            <Button
-                              size="sm"
-                              variant={signup.checked_in ? "outline" : "default"}
-                              disabled={checkingInId === signup.id || signup.checked_in}
-                              onClick={() => handleManualCheckin(signup.id)}
-                              className="shrink-0"
-                            >
-                              {checkingInId === signup.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : signup.checked_in ? (
-                                <Check className="w-4 h-4" />
-                              ) : (
-                                "Credenciar"
-                              )}
-                            </Button>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleManualPrint(signup)}
+                                title="Imprimir Crachá"
+                              >
+                                <Printer className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={signup.checked_in ? "outline" : "default"}
+                                disabled={checkingInId === signup.id || signup.checked_in}
+                                onClick={() => handleManualCheckin(signup.id)}
+                              >
+                                {checkingInId === signup.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : signup.checked_in ? (
+                                  <Check className="w-4 h-4" />
+                                ) : (
+                                  "Credenciar"
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         ))
                       )}

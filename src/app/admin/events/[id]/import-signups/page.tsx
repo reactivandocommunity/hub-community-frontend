@@ -59,6 +59,7 @@ interface ColumnMapping {
   name: string;
   email: string;
   phone: string;
+  cpf: string;
 }
 
 interface BatchInfo {
@@ -77,6 +78,7 @@ interface BatchInfo {
 const DOITY_NAME_COLUMNS = ['Nome', 'Nome Completo', 'name', 'Nome do participante', 'Participante'];
 const DOITY_EMAIL_COLUMNS = ['E-mail', 'Email', 'email', 'E-mail do participante'];
 const DOITY_PHONE_COLUMNS = ['Telefone', 'Celular', 'phone', 'WhatsApp', 'Telefone/Celular'];
+const DOITY_CPF_COLUMNS = ['CPF', 'cpf', 'Cpf', 'Documento', 'CPF do participante'];
 
 function autoDetectColumn(headers: string[], candidates: string[]): string {
   for (const candidate of candidates) {
@@ -131,6 +133,7 @@ export default function ImportSignupsPage() {
     name: '',
     email: '',
     phone: '',
+    cpf: '',
   });
   const [selectedBatchId, setSelectedBatchId] = useState<string>('');
   const [importResult, setImportResult] = useState<ImportSignupsResponse['importSignups'] | null>(null);
@@ -221,8 +224,9 @@ export default function ImportSignupsPage() {
         const autoName = autoDetectColumn(headerRow, DOITY_NAME_COLUMNS);
         const autoEmail = autoDetectColumn(headerRow, DOITY_EMAIL_COLUMNS);
         const autoPhone = autoDetectColumn(headerRow, DOITY_PHONE_COLUMNS);
+        const autoCpf = autoDetectColumn(headerRow, DOITY_CPF_COLUMNS);
 
-        setMapping({ name: autoName, email: autoEmail, phone: autoPhone });
+        setMapping({ name: autoName, email: autoEmail, phone: autoPhone, cpf: autoCpf });
         setStep('batch');
       } catch (error) {
         console.error('Error parsing file:', error);
@@ -258,6 +262,7 @@ export default function ImportSignupsPage() {
       name: getFullName(row, mapping.name),
       email: mapping.email && mapping.email !== '__none' ? String(row[mapping.email] || '').trim() : '',
       phone_number: mapping.phone && mapping.phone !== '__none' ? String(row[mapping.phone] || '').trim() : '',
+      cpf: mapping.cpf && mapping.cpf !== '__none' ? maskCPF(String(row[mapping.cpf] || '').trim()) : '',
     }))
     .filter((r) => r.name.trim() !== '');
 
@@ -275,6 +280,7 @@ export default function ImportSignupsPage() {
             name: d.name,
             email: d.email || null,
             phone_number: d.phone_number || null,
+            cpf: d.cpf ? d.cpf.replace(/\D/g, '') : null,
           })),
         },
       });
@@ -296,7 +302,7 @@ export default function ImportSignupsPage() {
     setCsvData([]);
     setHeaders([]);
     setFileName('');
-    setMapping({ name: '', email: '', phone: '' });
+    setMapping({ name: '', email: '', phone: '', cpf: '' });
     setSelectedBatchId('');
     setImportResult(null);
     setStep('upload');
@@ -781,7 +787,7 @@ export default function ImportSignupsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="space-y-2">
                       <Label className="flex items-center gap-1">
                         Nome <span className="text-destructive">*</span>
@@ -809,6 +815,16 @@ export default function ImportSignupsPage() {
                     <div className="space-y-2">
                       <Label>Telefone</Label>
                       <Select value={mapping.phone} onValueChange={(v) => setMapping((m) => ({ ...m, phone: v }))}>
+                        <SelectTrigger><SelectValue placeholder="Selecione a coluna" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__none">— Nenhum —</SelectItem>
+                          {headers.map((h) => (<SelectItem key={h} value={h}>{h}</SelectItem>))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>CPF</Label>
+                      <Select value={mapping.cpf} onValueChange={(v) => setMapping((m) => ({ ...m, cpf: v }))}>
                         <SelectTrigger><SelectValue placeholder="Selecione a coluna" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__none">— Nenhum —</SelectItem>
@@ -867,6 +883,7 @@ export default function ImportSignupsPage() {
                             <TableHead>Nome</TableHead>
                             <TableHead>E-mail</TableHead>
                             <TableHead>Telefone</TableHead>
+                            <TableHead>CPF</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -876,11 +893,12 @@ export default function ImportSignupsPage() {
                               <TableCell className="font-medium">{row.name}</TableCell>
                               <TableCell className="text-sm text-muted-foreground">{row.email || '—'}</TableCell>
                               <TableCell className="text-sm text-muted-foreground">{row.phone_number || '—'}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{row.cpf || '—'}</TableCell>
                             </TableRow>
                           ))}
                           {mappedData.length > 100 && (
                             <TableRow>
-                              <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-3">
+                              <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-3">
                                 ... e mais {mappedData.length - 100} registros
                               </TableCell>
                             </TableRow>

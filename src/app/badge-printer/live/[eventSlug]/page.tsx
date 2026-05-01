@@ -1,12 +1,12 @@
 'use client';
 
-import { useQuery, useSubscription } from '@apollo/client';
-import {
+import { useQuery, useSubscription, useMutation } from '@apollo/client';
   Check,
   Loader2,
   Monitor,
   Printer,
   QrCode,
+  Search,
   Wifi,
   WifiOff,
   Users,
@@ -28,10 +28,19 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { printBadge } from '@/lib/badge-print';
 import {
   CREDENTIAL_CHECKED_IN,
   EVENT_SIGNUPS,
+  CHECKIN_SIGNUP,
 } from '@/lib/queries';
 import {
   CredentialCheckedInData,
@@ -61,6 +70,11 @@ export default function LiveBadgePrinterPage() {
   const printQueueRef = useRef<EventSignup[]>([]);
   const isPrintingRef = useRef(false);
 
+  // Manual Checkin State
+  const [showManualCheckin, setShowManualCheckin] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [checkingInId, setCheckingInId] = useState<string | null>(null);
+
   // Hidden QR code canvas for badge printing
   const qrCanvasRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +91,35 @@ export default function LiveBadgePrinterPage() {
       fetchPolicy: 'network-only',
     }
   );
+
+  const [checkinSignup] = useMutation(CHECKIN_SIGNUP);
+
+  const handleManualCheckin = async (signupId: string) => {
+    setCheckingInId(signupId);
+    try {
+      await checkinSignup({
+        variables: { eventSlug, signupId },
+      });
+      // A assinatura (subscription) via WebSocket interceptará o evento de check-in efetuado
+      // e fará a impressão automática se a flag estiver ativada.
+      refetchSignups();
+    } catch (err) {
+      console.error('Error checking in manually:', err);
+    } finally {
+      setCheckingInId(null);
+    }
+  };
+
+  const filteredSignups = searchTerm
+    ? (signupsData?.eventSignups || []).filter((s) => {
+        const term = searchTerm.toLowerCase();
+        return (
+          s.name.toLowerCase().includes(term) ||
+          (s.email && s.email.toLowerCase().includes(term)) ||
+          (s.phone_number && s.phone_number.includes(term))
+        );
+      }).slice(0, 10)
+    : [];
 
   // Subscribe to real-time check-ins
   const { data: subscriptionData, error: subscriptionError } =
@@ -229,15 +272,87 @@ export default function LiveBadgePrinterPage() {
                 </div>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowSettings(!showSettings)}
-              className="gap-2"
-            >
-              <Settings className="w-4 h-4" />
-              Configurações
-            </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Dialog open={showManualCheckin} onOpenChange={setShowManualCheckin}>
+                <DialogTrigger asChild>
+                  <Button variant="default" size="sm" className="gap-2">
+                    <Search className="w-4 h-4" />
+                    Credenciamento Manual
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Credenciamento Manual</DialogTitle>
+                    <DialogDescription>
+                      Busque pelo nome, e-mail ou telefone do participante.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="flex items-center relative">
+                      <Search className="w-4 h-4 text-muted-foreground absolute left-3" />
+                      <Input
+                        placeholder="Buscar participante..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                      {searchTerm.length > 0 && filteredSignups.length === 0 ? (
+                        <p className="text-sm text-center text-muted-foreground py-4">
+                          Nenhum participante encontrado.
+                        </p>
+                      ) : (
+                        filteredSignups.map((signup) => (
+                          <div
+                            key={signup.id}
+                            className="flex items-center justify-between p-3 rounded-xl border bg-card"
+                          >
+                            <div className="min-w-0 pr-4">
+                              <p className="text-sm font-semibold truncate">{signup.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {signup.email || signup.phone_number || 'Sem contato'}
+                              </p>
+                              {signup.checked_in && (
+                                <p className="text-[10px] uppercase font-bold text-emerald-600 mt-1 inline-flex items-center gap-1">
+                                  <Check className="w-3 h-3" /> Credenciado
+                                </p>
+                              )}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={signup.checked_in ? "outline" : "default"}
+                              disabled={checkingInId === signup.id || signup.checked_in}
+                              onClick={() => handleManualCheckin(signup.id)}
+                              className="shrink-0"
+                            >
+                              {checkingInId === signup.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : signup.checked_in ? (
+                                <Check className="w-4 h-4" />
+                              ) : (
+                                "Credenciar"
+                              )}
+                            </Button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSettings(!showSettings)}
+                className="gap-2"
+              >
+                <Settings className="w-4 h-4" />
+                Configurações
+              </Button>
+            </div>
           </div>
 
           {/* Settings Panel */}
